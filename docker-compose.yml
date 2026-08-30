@@ -1,0 +1,177 @@
+# ============================================================================
+# SHADOWGRAPH — Docker Compose (Phase 1 design artifact)
+# Problem Statement ID 26151 · NTRO · SIH 2026
+#
+# Profiles:
+#   docker compose --profile demo up -d        # full stack, offline demo (default)
+#   docker compose --profile dev up -d         # stack + hot-reload backend/frontend
+#
+# No real secret values live here — everything pulls from .env (gitignored).
+# ============================================================================
+name: shadowgraph
+
+x-backend-env: &backend-env
+  APP_MODE: ${APP_MODE:-production}
+  SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+  REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-7}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-shadowgraph}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-shadowgraph}
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_USER: ${NEO4J_USER:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+  REDIS_URL: redis://redis:6379/0
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+  RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+  DB_ECHO: ${DB_ECHO:-false}
+  CORRELATION_WEIGHTS: ${CORRELATION_WEIGHTS:-'{"pgp":30,"wallet":25,"handle":15,"infrastructure":15,"stylometry":10,"behavior":5}'}
+  DEMO_SEED: ${DEMO_SEED:-20260726}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shadowgraph}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-shadowgraph}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docs/schemas/postgres_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shadowgraph} -d ${POSTGRES_DB:-shadowgraph}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [shadowgraph-net]
+
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 128m
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    ports:
+      - "7474:7474"   # browser
+      - "7687:7687"   # bolt
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [shadowgraph-net]
+
+  neo4j-init:
+    image: neo4j:5.26-community
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - |
+        echo "Waiting for neo4j bolt on neo4j:7687 ...";
+        until (echo > /dev/tcp/neo4j/7687) >/dev/null 2>&1; do sleep 2; done;
+        echo "Applying idempotent Neo4j schema...";
+        cypher-shell -a bolt://neo4j:7687 -u "$${NEO4J_USER}" -p "$${NEO4J_PASSWORD}" -f /schema/neo4j_schema.cypher \
+          || echo "Schema apply failed/warned — retry on next start (idempotent).";
+        echo "Neo4j schema init complete.";
+    environment:
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+    volumes:
+      - ./docs/schemas/neo4j_schema.cypher:/schema/neo4j_schema.cypher:ro
+    profiles: ["demo", "dev"]
+    depends_on:
+      neo4j: { condition: service_healthy }
+    networks: [shadowgraph-net]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [shadowgraph-net]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: prod
+    environment: *backend-env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [shadowgraph-net]
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: prod
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment: *backend-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [shadowgraph-net]
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: prod
+    command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
+    environment: *backend-env
+    depends_on:
+      redis: { condition: service_healthy }
+    networks: [shadowgraph-net]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    profiles: ["demo"]
+    ports:
+      - "80:80"      # nginx serving built SPA, proxies /api → backend
+    depends_on: [backend]
+    networks: [shadowgraph-net]
+
+  frontend-dev:
+    image: node:22-alpine
+    profiles: ["dev"]
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: ["sh", "-c", "npm install && npm run dev --host 0.0.0.0 --port 5173"]
+    environment:
+      VITE_API_BASE: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    depends_on: [backend]
+    networks: [shadowgraph-net]
+
+volumes:
+  pg_data: {}
+  neo4j_data: {}
+  neo4j_logs: {}
+  redis_data: {}
+
+networks:
+  shadowgraph-net:
+    driver: bridge

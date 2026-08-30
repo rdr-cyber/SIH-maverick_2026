@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --sg-bg: #0b0f17;
+    --sg-panel: #111827;
+    --sg-line: #1f2937;
+    --sg-accent: #3d7a8c;
+    --sg-focus: #7dd3c7;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-base text-slate-300 antialiased;
+    font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--sg-focus);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f1420;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #283247;
+    border-radius: 6px;
+    border: 2px solid #0f1420;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3d4d66;
+  }
+}
+
+@layer components {
+  .sg-panel {
+    @apply rounded-lg border border-slate-800 bg-panel shadow-sm;
+  }
+  .sg-input {
+    @apply w-full rounded-md border border-slate-700 bg-panel2 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/40;
+  }
+}
+
+@layer utilities {
+  .font-mono-tech {
+    font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace;
+  }
+}

@@ -1,0 +1,159 @@
+"""Investigation workspace API endpoints.
+
+The analyst workflow:
+  Create → Activate → Explore → Review → Decide → Close
+
+Decisions are NEVER automatic. The correlation engine proposes,
+the analyst disposes.
+"""
+from __future__ import annotations
+
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Body, Query
+from pydantic import BaseModel
+
+from app.api.deps import DbSession
+from app.services.investigations import InvestigationService
+
+router = APIRouter(prefix="/investigations", tags=["investigations"])
+
+
+# ------------------------------------------------------------------
+# Request schemas
+# ------------------------------------------------------------------
+
+class CreateInvestigationRequest(BaseModel):
+    title: str
+    description: str
+    lead_analyst: str
+    targets: list[str] = []
+    parameters: dict[str, Any] = {}
+
+
+class AddNoteRequest(BaseModel):
+    analyst: str
+    note: str
+
+
+class DecideRelationshipRequest(BaseModel):
+    relationship_id: str
+    decision: str  # accepted | rejected | uncertain
+    analyst: str
+    review_note: str | None = None
+
+
+# ------------------------------------------------------------------
+# CRUD endpoints
+# ------------------------------------------------------------------
+
+@router.get("", summary="List all investigations")
+def list_investigations(
+    session: DbSession,
+    status: str | None = Query(None, description="Filter by status"),
+) -> list[dict]:
+    svc = InvestigationService(session)
+    return svc.list_investigations(status=status)
+
+
+@router.get("/{code}", summary="Get investigation detail with relationships")
+def get_investigation(session: DbSession, code: str) -> dict:
+    svc = InvestigationService(session)
+    result = svc.get_investigation(code)
+    if not result:
+        return {"error": "not_found", "code": code}
+    return result
+
+
+@router.post("", status_code=201, summary="Create a new investigation")
+def create_investigation(
+    session: DbSession,
+    body: CreateInvestigationRequest,
+) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.create_investigation(
+            title=body.title,
+            description=body.description,
+            lead_analyst=body.lead_analyst,
+            targets=body.targets,
+            parameters=body.parameters,
+        )
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+# ------------------------------------------------------------------
+# Status transitions
+# ------------------------------------------------------------------
+
+@router.post("/{code}/activate", summary="Activate investigation")
+def activate(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.activate(code, analyst)
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+@router.post("/{code}/pause", summary="Pause investigation")
+def pause(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.pause(code, analyst)
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+@router.post("/{code}/close", summary="Close investigation")
+def close(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.close_investigation(code, analyst)
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+# ------------------------------------------------------------------
+# Notes
+# ------------------------------------------------------------------
+
+@router.post("/{code}/notes", summary="Add analyst note to investigation")
+def add_note(session: DbSession, code: str, body: AddNoteRequest) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.add_note(code, body.analyst, body.note)
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+# ------------------------------------------------------------------
+# Relationship decisions
+# ------------------------------------------------------------------
+
+@router.post("/decide", summary="Analyst decides on a relationship")
+def decide(session: DbSession, body: DecideRelationshipRequest) -> dict:
+    svc = InvestigationService(session)
+    try:
+        return svc.decide_relationship(
+            relationship_id=body.relationship_id,
+            decision=body.decision,
+            analyst=body.analyst,
+            review_note=body.review_note,
+        )
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+# ------------------------------------------------------------------
+# Audit log
+# ------------------------------------------------------------------
+
+@router.get("/audit/log", summary="Audit trail")
+def audit_log(
+    session: DbSession,
+    resource_type: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+) -> list[dict]:
+    svc = InvestigationService(session)
+    return svc.get_audit(resource_type=resource_type, limit=limit)

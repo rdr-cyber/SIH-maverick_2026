@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(git --version)",
+      "Bash(python -c ' *)",
+      "Bash(rm -f data/shadowgraph.db*)"
+    ]
+  }
+}
