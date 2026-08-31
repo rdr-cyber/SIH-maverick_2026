@@ -163,7 +163,7 @@ export default function InvestigationWorkspace() {
       <div className="flex gap-4">
         {/* Investigation list */}
         <div className="w-80 shrink-0 space-y-3">
-          <div className="sg-panel divide-y divide-line overflow-hidden">
+          <div className="mp-panel divide-y divide-line overflow-hidden">
             {investigations.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-500">No investigations yet</div>
             ) : (
@@ -182,7 +182,7 @@ export default function InvestigationWorkspace() {
                     <StatusBadge status={inv.status} />
                   </div>
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="font-mono-tech text-[10px] text-slate-500">{inv.code}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{inv.code}</span>
                     <span className="text-[10px] text-slate-600">
                       {inv.targets.join(", ")}
                     </span>
@@ -196,7 +196,7 @@ export default function InvestigationWorkspace() {
           </div>
 
           {/* Audit log */}
-          <div className="sg-panel p-3">
+          <div className="mp-panel p-3">
             <h3 className="mb-2 text-xs font-medium text-slate-400">Recent Audit Trail</h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {auditLog.length === 0 ? (
@@ -237,7 +237,7 @@ export default function InvestigationWorkspace() {
               decisionLoading={decisionLoading}
             />
           ) : (
-            <div className="sg-panel flex flex-col items-center justify-center py-16">
+            <div className="mp-panel flex flex-col items-center justify-center py-16">
               <p className="text-sm text-slate-400">Select an investigation</p>
               <p className="mt-1 text-xs text-slate-600">
                 Each workspace groups relationships, evidence, and analyst decisions
@@ -284,7 +284,7 @@ function InvestigationDetailPanel({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-sm font-medium text-slate-200">{detail.title}</h2>
@@ -356,7 +356,7 @@ function InvestigationDetailPanel({
       </div>
 
       {/* Relationships under review */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <h3 className="mb-3 text-sm font-medium text-slate-300">
           Relationships ({detail.relationships.length})
         </h3>
@@ -428,7 +428,7 @@ function InvestigationDetailPanel({
       </div>
 
       {/* Analyst note */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <h3 className="mb-2 text-sm font-medium text-slate-300">Add Analyst Note</h3>
         <div className="flex gap-2">
           <textarea

@@ -1,0 +1,2 @@
+Set-Location "C:\Users\rajde\OneDrive\Desktop\SIH2026\frontend"
+Start-Process -FilePath "C:\Users\rajde\OneDrive\Desktop\SIH2026\frontend\node_modules\.bin\vite.cmd" -ArgumentList "--host","--port","5173" -RedirectStandardOutput "C:\Users\rajde\OneDrive\Desktop\SIH2026\.freebuff\preview-8885b463-0ecb-4615-b9d8-756cf845213d.log" -RedirectStandardError "C:\Users\rajde\OneDrive\Desktop\SIH2026\.freebuff\preview-8885b463-0ecb-4615-b9d8-756cf845213d.log.err" -WindowStyle Hidden -PassThru | ForEach-Object { Write-Output "PID=$($_.Id)" }

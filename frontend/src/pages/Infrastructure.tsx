@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { fetchActors } from "@/api/client";
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
+const BASE = "/api/v1";
 
 interface InfraItem {
   id: string;
@@ -93,11 +93,11 @@ export default function Infrastructure() {
       </div>
 
       {/* Filters */}
-      <div className="sg-panel flex items-center gap-3 p-3">
+      <div className="mp-panel flex items-center gap-3 p-3">
         <select
           value={kindFilter}
           onChange={(e) => setKindFilter(e.target.value)}
-          className="sg-input max-w-[160px]"
+          className="mp-input max-w-[160px]"
         >
           <option value="">All types</option>
           <option value="domain">Domains</option>
@@ -106,7 +106,7 @@ export default function Infrastructure() {
         <select
           value={actorFilter}
           onChange={(e) => setActorFilter(e.target.value)}
-          className="sg-input max-w-[180px]"
+          className="mp-input max-w-[180px]"
         >
           <option value="">All actors</option>
           {actorOptions.map((a) => (
@@ -134,7 +134,7 @@ export default function Infrastructure() {
           ) : items.length === 0 ? (
             <div className="py-20 text-center text-sm text-slate-500">No infrastructure observations found</div>
           ) : (
-            <div className="sg-panel divide-y divide-line overflow-hidden">
+            <div className="mp-panel divide-y divide-line overflow-hidden">
               {items.map((item) => (
                 <button
                   key={item.id}
@@ -149,7 +149,7 @@ export default function Infrastructure() {
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 text-sm">{KIND_ICONS[item.kind] ?? "📌"}</span>
                       <div>
-                        <p className="font-mono-tech text-sm text-slate-200">{item.value}</p>
+                        <p className="font-mono text-sm text-slate-200">{item.value}</p>
                         {item.label && (
                           <p className="mt-0.5 text-xs text-slate-500">{item.label}</p>
                         )}
@@ -171,12 +171,12 @@ export default function Infrastructure() {
         {/* Detail panel */}
         {selected && (
           <div className="w-80 shrink-0">
-            <div className="sg-panel p-4">
+            <div className="mp-panel p-4">
               <h3 className="mb-2 text-sm font-medium text-slate-300">Observation Detail</h3>
               <div className="space-y-3">
                 <div>
                   <p className="text-[11px] text-slate-500">Value</p>
-                  <p className="font-mono-tech text-sm text-slate-200">{selected.value}</p>
+                  <p className="font-mono text-sm text-slate-200">{selected.value}</p>
                 </div>
                 <div>
                   <p className="text-[11px] text-slate-500">Type</p>
@@ -196,13 +196,13 @@ export default function Infrastructure() {
                 {selected.first_seen && (
                   <div>
                     <p className="text-[11px] text-slate-500">First Seen</p>
-                    <p className="font-mono-tech text-sm text-slate-300">{selected.first_seen.slice(0, 10)}</p>
+                    <p className="font-mono text-sm text-slate-300">{selected.first_seen.slice(0, 10)}</p>
                   </div>
                 )}
                 {selected.last_seen && (
                   <div>
                     <p className="text-[11px] text-slate-500">Last Seen</p>
-                    <p className="font-mono-tech text-sm text-slate-300">{selected.last_seen.slice(0, 10)}</p>
+                    <p className="font-mono text-sm text-slate-300">{selected.last_seen.slice(0, 10)}</p>
                   </div>
                 )}
                 {Object.keys(selected.attributes).length > 0 && (
@@ -225,7 +225,7 @@ export default function Infrastructure() {
 
       {/* Shared infrastructure clusters */}
       {clusters.length > 0 && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <h2 className="mb-3 text-sm font-medium text-slate-300">Shared Infrastructure</h2>
           <p className="mb-3 text-xs text-slate-500">
             Infrastructure shared by multiple actors — key intelligence signal
@@ -234,7 +234,7 @@ export default function Infrastructure() {
             {clusters.map((cl, i) => (
               <div key={i} className="rounded-md border border-line bg-panel2 px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono-tech text-sm text-slate-200">{cl.value}</span>
+                  <span className="font-mono text-sm text-slate-200">{cl.value}</span>
                   <span className="text-xs text-slate-500">
                     {cl.actor_count} actors: {cl.actors.join(", ")}
                   </span>

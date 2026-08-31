@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.services.infrastructure import InfrastructureService
 
-router = APIRouter(prefix="/infrastructure", tags=["infrastructure"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/infrastructure", tags=["infrastructure"])
 
 
 @router.get(

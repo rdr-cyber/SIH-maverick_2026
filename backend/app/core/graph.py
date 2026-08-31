@@ -420,25 +420,97 @@ class Neo4jGraph:
         depth: int = 1,
         max_nodes: int = 250,
     ) -> dict[str, Any]:
+        """Bounded BFS traversal returning Cytoscape-compatible data.
+
+        Uses parameterized Cypher with bounded depth to avoid unbounded
+        traversal. Returns the same {nodes, edges} structure as InProcessGraph.
+        """
         safe_label = _sanitize_cypher_label(label)
+        # Cap depth to prevent unbounded traversal
+        depth = min(max(depth, 0), 5)
+        max_nodes = min(max(max_nodes, 1), 500)
+
         driver = self._connect()
         with driver.session(database=settings.neo4j_database) as session:
+            # Collect all nodes and edges within bounded depth
+            # Use 0..depth range for variable-length path
             result = session.run(
                 f"""
-                MATCH path = (n:{safe_label} {{pgkey: $pgkey}})-[*0..{depth}]-(m)
-                WITH nodes(path) AS ns, relationships(path) AS rs
-                UNWIND ns AS node
-                WITH COLLECT(DISTINCT node) AS node_list
-                UNWIND node_list AS nd
-                WITH node_list, nd, CASE WHEN nd IS NULL THEN 0 ELSE 1 END AS _
-                RETURN node_list
-                LIMIT $limit
+                MATCH (center:{safe_label} {{pgkey: $pgkey}})
+                CALL {{
+                    WITH center
+                    MATCH path = (center)-[*0..{depth}]-(other)
+                    WITH nodes(path) AS ns, relationships(path) AS rs
+                    UNWIND ns AS n
+                    WITH COLLECT(DISTINCT n) AS node_list, rs
+                    UNWIND node_list AS nd
+                    WITH node_list, nd
+                    RETURN node_list
+                    LIMIT $max_nodes
+                }}
+                UNWIND node_list AS n
+                RETURN DISTINCT
+                    labels(n)[0] AS label,
+                    n.pgkey AS pgkey,
+                    properties(n) AS props
+                LIMIT $max_nodes
                 """,
                 pgkey=pgkey,
-                limit=max_nodes,
+                max_nodes=max_nodes,
             )
-            # Stub: full implementation in Milestone 3
-            return {"nodes": [], "edges": []}
+            nodes_raw = [dict(r) for r in result]
+
+            # Collect edges between collected nodes
+            node_keys = {(r["label"].upper(), r["pgkey"]) for r in nodes_raw}
+            edges_out: list[dict[str, Any]] = []
+
+            if node_keys:
+                # Query all edges between nodes in the collected set
+                result_edges = session.run(
+                    f"""
+                    MATCH (a:{safe_label} {{pgkey: $pgkey}})-[r*0..{depth}]-(b)
+                    WHERE a <> b
+                    WITH DISTINCT a, r[0] AS rel, b
+                    RETURN
+                        labels(a)[0] AS from_label,
+                        a.pgkey AS from_pgkey,
+                        type(rel) AS rel_type,
+                        labels(b)[0] AS to_label,
+                        b.pgkey AS to_pgkey,
+                        properties(rel) AS props
+                    LIMIT $max_edges
+                    """,
+                    pgkey=pgkey,
+                    max_edges=max_nodes * 2,
+                )
+                for er in result_edges:
+                    er_dict = dict(er)
+                    fk = (er_dict["from_label"].upper(), er_dict["from_pgkey"])
+                    tk = (er_dict["to_label"].upper(), er_dict["to_pgkey"])
+                    if fk in node_keys and tk in node_keys:
+                        edges_out.append({
+                            "data": {
+                                "source": f"{er_dict['from_label']}:{er_dict['from_pgkey']}",
+                                "target": f"{er_dict['to_label']}:{er_dict['to_pgkey']}",
+                                "rel_type": er_dict["rel_type"],
+                                **er_dict["props"],
+                            },
+                        })
+
+            # Build nodes in Cytoscape format
+            nodes_out: list[dict[str, Any]] = []
+            for nr in nodes_raw:
+                props = nr["props"]
+                nodes_out.append({
+                    "data": {
+                        "id": f"{nr['label']}:{nr['pgkey']}",
+                        "label": nr["label"],
+                        "pgkey": nr["pgkey"],
+                        **{k: v for k, v in props.items() if k not in ("postgres_uuid",)},
+                    },
+                })
+
+            return {"nodes": nodes_out, "edges": edges_out}
 
     def clear(self) -> None:
         driver = self._connect()

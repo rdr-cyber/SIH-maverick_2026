@@ -51,7 +51,7 @@ export default function ActorProfile() {
           </div>
         </div>
         <div className="text-right">
-          <p className="font-mono-tech text-lg text-teal-400">
+          <p className="font-mono text-lg text-teal-400">
             {actor.attribution_confidence}
           </p>
           <p className="text-[10px] text-slate-500">RCS</p>
@@ -60,7 +60,7 @@ export default function ActorProfile() {
 
       {/* Summary */}
       {actor.summary && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <p className="text-sm text-slate-300">{actor.summary}</p>
         </div>
       )}
@@ -73,15 +73,15 @@ export default function ActorProfile() {
           { label: "Personas", value: String(actor.persona_count) },
           { label: "Identifiers", value: String(actor.identifier_count) },
         ].map((m) => (
-          <div key={m.label} className="sg-panel p-3">
+          <div key={m.label} className="mp-panel p-3">
             <p className="text-[11px] text-slate-500">{m.label}</p>
-            <p className="mt-0.5 font-mono-tech text-sm text-slate-300">{m.value}</p>
+            <p className="mt-0.5 font-mono text-sm text-slate-300">{m.value}</p>
           </div>
         ))}
       </div>
 
       {/* Personas */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <h2 className="mb-3 text-sm font-medium text-slate-300">Personas</h2>
         <div className="space-y-3">
           {actor.personas.map((p) => (
@@ -107,7 +107,7 @@ export default function ActorProfile() {
                   {p.identifiers.map((i) => (
                     <span
                       key={i.id}
-                      className="rounded bg-slate-800 px-2 py-0.5 font-mono-tech text-[11px] text-slate-400"
+                      className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[11px] text-slate-400"
                       title={i.label ?? i.value}
                     >
                       {i.kind}: {i.value.length > 30 ? `${i.value.slice(0, 20)}…${i.value.slice(-8)}` : i.value}

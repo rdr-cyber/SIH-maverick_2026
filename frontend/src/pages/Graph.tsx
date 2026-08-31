@@ -116,7 +116,7 @@ export default function Graph() {
               return (_el.data("group") as string) === "actor" ? 30 : 16;
             },
             "border-width": 1,
-            "border-color": "#1f2937",
+            "border-color": "#1c2230",
           }},
         {
           selector: "edge",
@@ -138,7 +138,7 @@ export default function Graph() {
             },
             "font-size": "9px",
             color: "#9ca3af",
-            "text-background-color": "#0b0f17",
+            "text-background-color": "#090c10",
             "text-background-opacity": 0.8,
             "text-background-padding": "2px",
           }},
@@ -278,13 +278,13 @@ export default function Graph() {
       </div>
 
       {/* Controls */}
-      <div className="sg-panel flex items-center gap-3 p-3">
+      <div className="mp-panel flex items-center gap-3 p-3">
         <input
           type="text"
           placeholder="Search nodes…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="sg-input max-w-xs"
+          className="mp-input max-w-xs"
         />
         <div className="flex flex-wrap gap-1.5">
           {GROUP_FILTERS.map((g) => (
@@ -311,7 +311,7 @@ export default function Graph() {
       {/* Graph + Evidence panel */}
       <div className="flex flex-1 gap-3 overflow-hidden">
         {/* Graph container */}
-        <div className="sg-panel relative flex-1 overflow-hidden">
+        <div className="mp-panel relative flex-1 overflow-hidden">
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-panel/80">
               <Loading label="Loading graph…" />
@@ -328,7 +328,7 @@ export default function Graph() {
         {/* Evidence panel */}
         {selectedEdge && (
           <div className="w-80 shrink-0 overflow-y-auto">
-            <div className="sg-panel p-4">
+            <div className="mp-panel p-4">
               <h3 className="mb-2 text-sm font-medium text-slate-300">Edge Evidence</h3>
               <p className="mb-3 text-xs text-slate-500">{selectedLabel}</p>
               {selectedEdge.length === 0 ? (
@@ -344,7 +344,7 @@ export default function Graph() {
                         <span className="text-xs font-medium text-slate-300">
                           {ev.title}
                         </span>
-                        <span className="font-mono-tech text-xs text-teal-400">
+                        <span className="font-mono text-xs text-teal-400">
                           +{ev.score_contribution}
                         </span>
                       </div>

@@ -6,13 +6,15 @@ Every export comes from the actual investigation record — no fabricated conten
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.services.reporting import ReportService, export_csv, export_json, export_pdf
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/reports", tags=["reports"])
 
 
 @router.get("/{code}", summary="Generate investigation report")

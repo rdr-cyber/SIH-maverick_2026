@@ -1,6 +1,6 @@
 """Application configuration and infrastructure-adapter selection.
 
-SHADOWGRAPH is ONE application with interchangeable infrastructure adapters.
+MAVERICKS PROJECT is ONE application with interchangeable infrastructure adapters.
 `APP_MODE` selects a coherent bundle of defaults; each backend can still be
 overridden individually.
 
@@ -44,6 +44,7 @@ DEFAULT_CORRELATION_WEIGHTS: dict[str, int] = {
     "infrastructure": 15,
     "stylometry": 10,
     "behavior": 5,
+    "jabber": 10,
 }
 
 
@@ -58,7 +59,7 @@ class Settings(BaseSettings):
     )
 
     # ---- identity ----------------------------------------------------------
-    app_name: str = "SHADOWGRAPH"
+    app_name: str = "MAVERICKS PROJECT"
     app_version: str = "0.1.0"
     api_prefix: str = "/api/v1"
 
@@ -80,11 +81,18 @@ class Settings(BaseSettings):
     neo4j_database: str = "neo4j"
     redis_url: str | None = None
 
-    # ---- auth (wired in a later milestone; no insecure default) ------------
+    # ---- auth --------------------------------------------------------------
     secret_key: str | None = None
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 30
     refresh_token_days: int = 7
+
+    @model_validator(mode="after")
+    def _ensure_secret_key(self) -> "Settings":
+        if not self.secret_key:
+            import secrets as _secrets
+            self.secret_key = _secrets.token_hex(32)
+        return self
 
     # ---- demo data ---------------------------------------------------------
     seed_on_startup: bool = True
@@ -92,7 +100,7 @@ class Settings(BaseSettings):
 
     # ---- api behaviour -----------------------------------------------------
     log_level: str = "INFO"
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://127.0.0.1:5174,http://127.0.0.1:5175,http://127.0.0.1:5176"
     default_page_size: int = 25
     max_page_size: int = 200
 

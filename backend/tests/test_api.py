@@ -22,6 +22,17 @@ client = TestClient(app, raise_server_exceptions=False)
 # Trigger lifespan (creates tables + seeds data)
 client.__enter__()
 
+# Authenticate as admin for all tests
+_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+assert _login.status_code == 200, f"Login failed: {_login.text}"
+AUTH = {"Authorization": f"Bearer {_login.json()['access_token']}"}
+
+def _get(url: str, **kw):
+    return client.get(url, headers=AUTH, **kw)
+
+def _post(url: str, **kw):
+    return _post(url, headers=AUTH, **kw)
+
 
 def _section(title: str) -> None:
     print(f"\n{'=' * 60}")
@@ -41,10 +52,10 @@ def _check(label: str, ok: bool, detail: str = "") -> None:
 # =========================================================================
 def test_root():
     _section("1. GET /")
-    r = client.get("/")
+    r = _get("/")
     _check("status 200", r.status_code == 200, str(r.status_code))
     body = r.json()
-    _check("has name", body.get("name") == "SHADOWGRAPH", str(body))
+    _check("has name", body.get("name") == "MAVERICKS PROJECT", str(body))
     _check("has version", "version" in body, str(body))
     _check("has docs link", body.get("docs") == "/docs", str(body))
     _check("has api prefix", body.get("api") == "/api/v1", str(body))
@@ -55,11 +66,11 @@ def test_root():
 # =========================================================================
 def test_health():
     _section("2. GET /api/v1/health")
-    r = client.get("/api/v1/health")
+    r = _get("/api/v1/health")
     _check("status 200", r.status_code == 200, str(r.status_code))
     body = r.json()
     _check("status=ok", body.get("status") == "ok", str(body.get("status")))
-    _check("app name", body.get("app") == "SHADOWGRAPH")
+    _check("app name", body.get("app") == "MAVERICKS PROJECT")
     _check("version", body.get("version") == "0.1.0")
 
     adapters = body.get("adapters", {})
@@ -79,7 +90,7 @@ def test_health():
 # =========================================================================
 def test_list_actors():
     _section("3. GET /api/v1/actors (default)")
-    r = client.get("/api/v1/actors")
+    r = _get("/api/v1/actors")
     _check("status 200", r.status_code == 200, str(r.status_code))
     body = r.json()
     _check("has items", isinstance(body.get("items"), list))
@@ -103,7 +114,7 @@ def test_list_actors():
 # =========================================================================
 def test_list_actors_search():
     _section("4. GET /api/v1/actors?q=darkmerchant")
-    r = client.get("/api/v1/actors", params={"q": "darkmerchant"})
+    r = _get("/api/v1/actors", params={"q": "darkmerchant"})
     _check("status 200", r.status_code == 200)
     body = r.json()
     _check("found results", body["total"] >= 1, str(body["total"]))
@@ -118,21 +129,21 @@ def test_list_actors_filters():
     _section("5. GET /api/v1/actors (filters)")
 
     # Risk level filter
-    r = client.get("/api/v1/actors", params={"risk_level": "critical"})
+    r = _get("/api/v1/actors", params={"risk_level": "critical"})
     _check("risk_level=critical status 200", r.status_code == 200)
     body = r.json()
     for item in body["items"]:
         _check(f"  {item['code']} is critical", item["risk_level"] == "critical")
 
     # Category filter
-    r = client.get("/api/v1/actors", params={"category": "narcotics"})
+    r = _get("/api/v1/actors", params={"category": "narcotics"})
     _check("category=narcotics status 200", r.status_code == 200)
     body = r.json()
     for item in body["items"]:
         _check(f"  {item['code']} is narcotics", item["category"] == "narcotics")
 
     # Status filter
-    r = client.get("/api/v1/actors", params={"status": "dormant"})
+    r = _get("/api/v1/actors", params={"status": "dormant"})
     _check("status=dormant status 200", r.status_code == 200)
     body = r.json()
     for item in body["items"]:
@@ -146,7 +157,7 @@ def test_list_actors_sorting():
     _section("6. GET /api/v1/actors (sorting)")
 
     # Sort by risk ascending
-    r = client.get("/api/v1/actors", params={"sort": "risk", "order": "asc"})
+    r = _get("/api/v1/actors", params={"sort": "risk", "order": "asc"})
     _check("sort risk asc status 200", r.status_code == 200)
     body = r.json()
     risk_order = {"low": 1, "moderate": 2, "high": 3, "critical": 4}
@@ -154,7 +165,7 @@ def test_list_actors_sorting():
     _check("risk ascending", risks == sorted(risks), str(risks))
 
     # Sort by confidence descending
-    r = client.get("/api/v1/actors", params={"sort": "confidence", "order": "desc"})
+    r = _get("/api/v1/actors", params={"sort": "confidence", "order": "desc"})
     _check("sort confidence desc status 200", r.status_code == 200)
     body = r.json()
     confs = [i["attribution_confidence"] for i in body["items"]]
@@ -166,7 +177,7 @@ def test_list_actors_sorting():
 # =========================================================================
 def test_list_actors_pagination():
     _section("7. GET /api/v1/actors (pagination)")
-    r = client.get("/api/v1/actors", params={"limit": 3, "offset": 0})
+    r = _get("/api/v1/actors", params={"limit": 3, "offset": 0})
     _check("limit=3 status 200", r.status_code == 200)
     body = r.json()
     _check("items <= 3", len(body["items"]) <= 3, str(len(body["items"])))
@@ -174,7 +185,7 @@ def test_list_actors_pagination():
     _check("offset=0", body["offset"] == 0)
 
     # Second page
-    r2 = client.get("/api/v1/actors", params={"limit": 3, "offset": 3})
+    r2 = _get("/api/v1/actors", params={"limit": 3, "offset": 3})
     _check("page 2 status 200", r2.status_code == 200)
     body2 = r2.json()
     ids1 = [i["id"] for i in body["items"]]
@@ -187,7 +198,7 @@ def test_list_actors_pagination():
 # =========================================================================
 def test_stats():
     _section("8. GET /api/v1/actors/stats")
-    r = client.get("/api/v1/actors/stats")
+    r = _get("/api/v1/actors/stats")
     _check("status 200", r.status_code == 200)
     body = r.json()
     _check("total_actors > 0", body.get("total_actors", 0) > 0)
@@ -205,7 +216,7 @@ def test_stats():
 # =========================================================================
 def test_get_actor_by_code():
     _section("9. GET /api/v1/actors/{code}")
-    r = client.get("/api/v1/actors/darkmerchant")
+    r = _get("/api/v1/actors/darkmerchant")
     _check("status 200", r.status_code == 200)
     body = r.json()
     _check("code=darkmerchant", body.get("code") == "darkmerchant")
@@ -229,9 +240,9 @@ def test_get_actor_by_code():
 def test_get_actor_by_uuid():
     _section("10. GET /api/v1/actors/{uuid}")
     # First get a known actor to extract its UUID
-    r = client.get("/api/v1/actors/darkmerchant")
+    r = _get("/api/v1/actors/darkmerchant")
     actor_id = r.json()["id"]
-    r2 = client.get(f"/api/v1/actors/{actor_id}")
+    r2 = _get(f"/api/v1/actors/{actor_id}")
     _check("status 200 by UUID", r2.status_code == 200)
     _check("same code", r2.json().get("code") == "darkmerchant")
 
@@ -241,7 +252,7 @@ def test_get_actor_by_uuid():
 # =========================================================================
 def test_get_actor_404():
     _section("11. GET /api/v1/actors/{nonexistent}")
-    r = client.get("/api/v1/actors/nonexistent_actor_xyz")
+    r = _get("/api/v1/actors/nonexistent_actor_xyz")
     _check("status 404", r.status_code == 404, str(r.status_code))
     body = r.json()
     _check("has detail", "detail" in body)
@@ -253,7 +264,7 @@ def test_get_actor_404():
 # =========================================================================
 def test_shadow_vendor_search():
     _section("12. Correlation demo pair: shadow_vendor search")
-    r = client.get("/api/v1/actors", params={"q": "shadow_vendor"})
+    r = _get("/api/v1/actors", params={"q": "shadow_vendor"})
     _check("status 200", r.status_code == 200)
     body = r.json()
     codes = [i["code"] for i in body["items"]]
@@ -265,7 +276,7 @@ def test_shadow_vendor_search():
 # =========================================================================
 def test_search_by_identifier():
     _section("13. Search by identifier value (PGP fingerprint)")
-    r = client.get("/api/v1/actors", params={"q": "9F2A4C81D3E5B7091A62F84C5D30E7B29C41A8F6"})
+    r = _get("/api/v1/actors", params={"q": "9F2A4C81D3E5B7091A62F84C5D30E7B29C41A8F6"})
     _check("status 200", r.status_code == 200)
     body = r.json()
     _check("found via PGP search", body["total"] >= 1, str(body["total"]))
@@ -279,7 +290,7 @@ def test_search_by_identifier():
 # =========================================================================
 def test_openapi():
     _section("14. GET /openapi.json")
-    r = client.get("/openapi.json")
+    r = _get("/openapi.json")
     _check("status 200", r.status_code == 200)
     body = r.json()
     _check("has paths", "paths" in body)

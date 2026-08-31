@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchActors } from "@/api/client";
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
+const BASE = "/api/v1";
 
 interface TimelineEvent {
   id: string;
@@ -111,11 +111,11 @@ export default function Timeline() {
       </div>
 
       {/* Filters */}
-      <div className="sg-panel flex items-center gap-3 p-3">
+      <div className="mp-panel flex items-center gap-3 p-3">
         <select
           value={actorFilter}
           onChange={(e) => setActorFilter(e.target.value)}
-          className="sg-input max-w-[180px]"
+          className="mp-input max-w-[180px]"
         >
           <option value="">All actors</option>
           {actorOptions.map((a) => (
@@ -125,7 +125,7 @@ export default function Timeline() {
         <select
           value={kindFilter}
           onChange={(e) => setKindFilter(e.target.value)}
-          className="sg-input max-w-[180px]"
+          className="mp-input max-w-[180px]"
         >
           <option value="">All event types</option>
           {EVENT_KINDS.map((k) => (
@@ -156,7 +156,7 @@ export default function Timeline() {
             Object.entries(byYear).map(([year, yearEvents]) => (
               <div key={year}>
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="font-mono-tech text-lg font-bold text-slate-400">{year}</span>
+                  <span className="font-mono text-lg font-bold text-slate-400">{year}</span>
                   <div className="h-px flex-1 bg-line" />
                 </div>
                 <div className="space-y-2 pl-4">
@@ -186,7 +186,7 @@ export default function Timeline() {
                               {ev.actor_code}
                             </span>
                           )}
-                          <span className="font-mono-tech text-[11px] text-slate-600">
+                          <span className="font-mono text-[11px] text-slate-600">
                             {ev.occurred_at?.slice(0, 10)}
                           </span>
                         </div>
@@ -202,7 +202,7 @@ export default function Timeline() {
         {/* Detail panel */}
         {selected && (
           <div className="w-80 shrink-0">
-            <div className="sg-panel p-4">
+            <div className="mp-panel p-4">
               <h3 className="mb-2 text-sm font-medium text-slate-300">Event Detail</h3>
               <div className="space-y-3">
                 <div>
@@ -215,7 +215,7 @@ export default function Timeline() {
                 </div>
                 <div>
                   <p className="text-[11px] text-slate-500">Date</p>
-                  <p className="font-mono-tech text-sm text-slate-300">{selected.occurred_at?.slice(0, 10)}</p>
+                  <p className="font-mono text-sm text-slate-300">{selected.occurred_at?.slice(0, 10)}</p>
                 </div>
                 {selected.actor_code && (
                   <div>
@@ -232,7 +232,7 @@ export default function Timeline() {
                 {selected.confidence_delta != null && (
                   <div>
                     <p className="text-[11px] text-slate-500">Confidence Delta</p>
-                    <p className="font-mono-tech text-sm text-yellow-400">{selected.confidence_delta > 0 ? "+" : ""}{selected.confidence_delta}</p>
+                    <p className="font-mono text-sm text-yellow-400">{selected.confidence_delta > 0 ? "+" : ""}{selected.confidence_delta}</p>
                   </div>
                 )}
               </div>

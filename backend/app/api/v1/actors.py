@@ -3,15 +3,20 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 
+from app.api.auth import get_current_user
 from app.api.deps import ActorServiceDep, LimitQuery, OffsetQuery
 from app.models.identity import ACTOR_CATEGORIES, ACTOR_STATUSES, RISK_LEVELS
 from app.schemas.actor import ActorDetail, ActorStats, ActorSummary
 from app.schemas.common import ErrorResponse, Page
 from app.services.actors import ActorNotFound
 
-router = APIRouter(prefix="/actors", tags=["actors"])
+router = APIRouter(
+    prefix="/actors",
+    tags=["actors"],
+    dependencies=[Depends(get_current_user)],
+)
 
 SortField = Literal["risk", "confidence", "display_name", "last_seen", "last_scan_at"]
 

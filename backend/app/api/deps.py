@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_session
 from app.core.config import settings
 from app.services.actors import ActorService
+from app.api.auth import CurrentUser, get_current_user, require_role  # re-export
 
 DbSession = Annotated[Session, Depends(get_session)]
 

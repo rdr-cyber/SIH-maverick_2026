@@ -162,7 +162,10 @@ INVESTIGATIONS: list[dict[str, Any]] = [
 # Relationships: the SIH flagship correlation scenario
 # ---------------------------------------------------------------------------
 RELATIONSHIPS: list[dict[str, Any]] = [
-    # darkmerchant ↔ shadow_vendor: POSSIBLY_SAME_AS — HIGH confidence
+    # darkmerchant ↔ shadow_vendor: POSSIBLY_SAME_AS — confidence computed at seed time
+    # NOTE: confidence and band are overwritten by the ConfidenceEngine during seeding.
+    # The values below are initial placeholders; the authoritative RCS is computed from
+    # PGP match (30) + wallet match (25) = 55 raw, then weighted by source reliability.
     {
         "code": "REL-DM-SV-001",
         "kind": "POSSIBLY_SAME_AS",
@@ -170,8 +173,8 @@ RELATIONSHIPS: list[dict[str, Any]] = [
         "from_code": "darkmerchant",
         "to_type": "actors",
         "to_code": "shadow_vendor",
-        "confidence": 84.0,
-        "band": "high",
+        "confidence": 0.0,  # computed by ConfidenceEngine at seed time
+        "band": "low",     # computed by ConfidenceEngine at seed time
         "status": "pending",
         "engine_ref": "correlation_engine",
         "hypothesis_label": "shadow_vendor is a rebrand of darkmerchant",
@@ -179,25 +182,20 @@ RELATIONSHIPS: list[dict[str, Any]] = [
             "PGP fingerprint match (+30): both personas advertise the same "
             "40-hex RSA-4096 key 9F2A4C81…A8F6.  Wallet address match (+25): "
             "identical BTC payout address bc1qk7m3v…klzx used on both "
-            "Silk Harbor Market and Nightfall Bazaar.  Handle similarity (+5): "
-            "'darkmerchant' and 'shadow_vendor' are structurally similar but "
-            "not identical, yielding a capped contribution.  Stylometric "
-            "similarity (+10): TF-IDF cosine 0.91 on char+word n-grams, "
-            "both use 'escrow only, no FE' repeatedly.  Behavior similarity "
-            "(+5): matching Tue/Thu/Sun evening schedule (18-22 UTC), "
-            "consistent hibernation gap Nov 2025 - Jan 2026."
+            "Silk Harbor Market and Nightfall Bazaar.  Source reliability "
+            "weighting adjusts the raw score to reflect source quality."
         ),
         "scoring_factors": [
-            {"signal": "pgp", "weight": 30, "score": 30, "note": "identical fingerprint"},
-            {"signal": "wallet", "weight": 25, "score": 25, "note": "identical BTC address"},
-            {"signal": "handle", "weight": 15, "score": 5, "note": "similar but not identical"},
-            {"signal": "stylometry", "weight": 10, "score": 10, "note": "cosine 0.91"},
-            {"signal": "behavior", "weight": 5, "score": 5, "note": "matching schedule + hibernation"},
+            {"signal": "pgp_match", "weight": 30, "score": 30, "note": "identical fingerprint"},
+            {"signal": "wallet_match", "weight": 25, "score": 25, "note": "identical BTC address"},
+            {"signal": "communication_match", "weight": 10, "score": 10, "note": "shared XMPP escrow contact"},
+            {"signal": "stylometric_similarity", "weight": 10, "score": 7, "note": "79% stylometric similarity"},
+            {"signal": "behavior_similarity", "weight": 5, "score": 2, "note": "56% behavioral similarity"},
         ],
         "first_seen": "2026-08-28",
         "last_seen": "2026-08-28",
     },
-    # launderpipe ↔ crimson_ledger: POSSIBLY_SAME_AS — MODERATE (wallet only)
+    # launderpipe ↔ crimson_ledger: POSSIBLY_SAME_AS — wallet only, confidence computed at seed time
     {
         "code": "REL-LP-CL-001",
         "kind": "POSSIBLY_SAME_AS",
@@ -205,8 +203,8 @@ RELATIONSHIPS: list[dict[str, Any]] = [
         "from_code": "launderpipe",
         "to_type": "actors",
         "to_code": "crimson_ledger",
-        "confidence": 48.0,
-        "band": "low",
+        "confidence": 0.0,  # computed by ConfidenceEngine at seed time
+        "band": "low",     # computed by ConfidenceEngine at seed time
         "status": "pending",
         "engine_ref": "correlation_engine",
         "hypothesis_label": 'wallet overlap between launderpipe and crimson_ledger',
@@ -222,6 +220,30 @@ RELATIONSHIPS: list[dict[str, Any]] = [
         "first_seen": "2026-08-29",
         "last_seen": "2026-08-29",
     },
+    # quietsteel ↔ iron_broker: POSSIBLY_SAME_AS — CERTIFICATE FINGERPRINT
+    {
+        "code": "REL-QS-IB-001",
+        "kind": "POSSIBLY_SAME_AS",
+        "from_type": "actors",
+        "from_code": "quietsteel",
+        "to_type": "actors",
+        "to_code": "iron_broker",
+        "confidence": 0.0,  # computed by ConfidenceEngine at seed time
+        "band": "low",     # computed by ConfidenceEngine at seed time
+        "status": "pending",
+        "engine_ref": "correlation_engine",
+        "hypothesis_label": 'certificate fingerprint shared between quietsteel and iron_broker',
+        "explanation": (
+            "Certificate fingerprint match: both actors' infrastructure uses the same TLS "
+            "certificate (A0C4D82F61B935E7204C8AF3D91E56B7480CA2E9). This indicates shared "
+            "hosting or infrastructure, but not necessarily the same actor."
+        ),
+        "scoring_factors": [
+            {"signal": "certificate_fingerprint", "weight": 15, "score": 15, "note": "identical TLS certificate fingerprint"},
+        ],
+        "first_seen": "2026-08-29",
+        "last_seen": "2026-08-29",
+    },
     # pharmakon ↔ redsparrow: POSSIBLY_SAME_AS — WEAK (shared XMPP only)
     {
         "code": "REL-PH-RS-001",
@@ -230,8 +252,8 @@ RELATIONSHIPS: list[dict[str, Any]] = [
         "from_code": "pharmakon",
         "to_type": "actors",
         "to_code": "redsparrow",
-        "confidence": 18.0,
-        "band": "weak",
+        "confidence": 0.0,  # computed by ConfidenceEngine at seed time
+        "band": "low",     # computed by ConfidenceEngine at seed time
         "status": "rejected",
         "engine_ref": "correlation_engine",
         "reviewed_by": "demo_analyst",
@@ -279,28 +301,58 @@ EVIDENCE: list[dict[str, Any]] = [
     },
     {
         "code": "EVID-003",
-        "kind": "stylometric_similarity",
-        "title": "Writing style similarity",
-        "description": "TF-IDF cosine 0.91 — shared phrase 'escrow only, no FE' appears 8 times across corpora",
-        "strength": "strong",
-        "evidence_class": "DERIVED_SIGNAL",
+        "kind": "communication_match",
+        "title": "Shared XMPP escrow contact",
+        "description": "Both darkmerchant and shadow_vendor advertise the same XMPP contact dm-escrow@synthetic-xmpp.invalid for escrow coordination",
+        "strength": "moderate",
+        "evidence_class": "OBSERVED_FACT",
         "score_contribution": 10.0,
         "relationship_code": "REL-DM-SV-001",
-        "details": {"cosine": 0.91, "shared_phrases": ["escrow only, no FE"], "corpus_size": [11, 14]},
+        "details": {"jid": "dm-escrow@synthetic-xmpp.invalid", "channel": "xmpp", "match_type": "exact"},
     },
     {
         "code": "EVID-004",
-        "kind": "behavior_similarity",
-        "title": "Matching posting schedule",
-        "description": "Both personas post Tue/Thu/Sun evenings (18-22 UTC) with consistent hibernation gap Nov 2025 - Jan 2026",
+        "kind": "stylometric_similarity",
+        "title": "Stylometric similarity (79%)",
+        "description": "Identical writing pattern 'terse numbered offers'; shared listing categories credential_dumps, card_data (Jaccard=0.67); shared language en (Jaccard=0.50); similar listing description style (trigram cosine=1.0)",
         "strength": "moderate",
         "evidence_class": "DERIVED_SIGNAL",
-        "score_contribution": 5.0,
+        "score_contribution": 7.0,
         "relationship_code": "REL-DM-SV-001",
-        "details": {"schedule": "Tue/Thu/Sun 18-22 UTC", "hibernation": "2025-11 to 2026-01"},
+        "details": {
+            "similarity": 0.792,
+            "features_compared": 4,
+            "features_matched": 3.17,
+            "features": [
+                {"feature": "writing_pattern", "value": "terse numbered offers", "match": "exact"},
+                {"feature": "listing_categories", "value": "credential_dumps, card_data", "jaccard": 0.67},
+                {"feature": "languages", "value": "en", "jaccard": 0.50},
+                {"feature": "description_style", "value": "credential dump listings", "trigram_cosine": 1.0}
+            ]
+        },
     },
     {
         "code": "EVID-005",
+        "kind": "behavior_similarity",
+        "title": "Behavioral similarity (56%)",
+        "description": "Active hours overlap 100% (21:00-05:00 vs 21:30-05:30); matching product categories credential_dumps, card_data (Jaccard=0.67)",
+        "strength": "moderate",
+        "evidence_class": "DERIVED_SIGNAL",
+        "score_contribution": 2.0,
+        "relationship_code": "REL-DM-SV-001",
+        "details": {
+            "similarity": 0.556,
+            "features_compared": 3,
+            "features_matched": 1.67,
+            "features": [
+                {"feature": "active_hours", "value_a": "21:00-05:00", "value_b": "21:30-05:30", "overlap": 1.0},
+                {"feature": "product_categories", "value": "credential_dumps, card_data", "jaccard": 0.67},
+                {"feature": "hibernation_timing", "description": "shadow_vendor appeared 38d after darkmerchant went inactive"}
+            ]
+        },
+    },
+    {
+        "code": "EVID-006",
         "kind": "wallet_match",
         "title": "Shared BTC consolidation address",
         "description": "launderpipe and crimson_ledger both use bc1q0w9e8r7t6y5u4i3o2p1a9s8d7f6g5h4j3k2l1z",
@@ -309,6 +361,21 @@ EVIDENCE: list[dict[str, Any]] = [
         "score_contribution": 25.0,
         "relationship_code": "REL-LP-CL-001",
         "details": {"address": "bc1q0w9e8r7t6y5u4i3o2p1a9s8d7f6g5h4j3k2l1z", "chain": "btc"},
+    },
+    {
+        "code": "EVID-007",
+        "kind": "infrastructure_reuse",
+        "title": "Shared TLS certificate fingerprint",
+        "description": "Both quietsteel and iron_broker have infrastructure using the same TLS certificate (A0C4D82F61B935E7204C8AF3D91E56B7480CA2E9), indicating shared hosting.",
+        "strength": "strong",
+        "evidence_class": "OBSERVED_FACT",
+        "score_contribution": 15.0,
+        "relationship_code": "REL-QS-IB-001",
+        "details": {
+            "fingerprint": "A0C4D82F61B935E7204C8AF3D91E56B7480CA2E9",
+            "match_type": "exact_fingerprint",
+            "note": "Certificate fingerprint reuse is strong infrastructure evidence but not identity proof",
+        },
     },
 ]
 
@@ -328,9 +395,9 @@ TIMELINE_EVENTS: list[dict[str, Any]] = [
     {"kind": "wallet_associated", "actor_code": "shadow_vendor", "occurred_at": "2025-10-02", "title": "Same BTC payout address used by shadow_vendor"},
     {"kind": "activity", "actor_code": "shadow_vendor", "occurred_at": "2025-10-11", "title": "shadowvendor persona appears on CipherTalk Forum"},
     # Correlation events
-    {"kind": "relationship_added", "actor_code": "darkmerchant", "occurred_at": "2026-08-28", "title": "POSSIBLY_SAME_AS relationship created (darkmerchant → shadow_vendor)", "detail": "Confidence: 84.0, Band: HIGH"},
-    {"kind": "relationship_added", "actor_code": "launderpipe", "occurred_at": "2026-08-29", "title": "POSSIBLY_SAME_AS relationship created (launderpipe → crimson_ledger)", "detail": "Confidence: 48.0, Band: LOW"},
-    {"kind": "relationship_added", "actor_code": "pharmakon", "occurred_at": "2026-08-26", "title": "POSSIBLY_SAME_AS relationship created (pharmakon → redsparrow)", "detail": "Confidence: 18.0, Band: WEAK"},
+    {"kind": "relationship_added", "actor_code": "darkmerchant", "occurred_at": "2026-08-28", "title": "POSSIBLY_SAME_AS relationship created (darkmerchant → shadow_vendor)", "detail": "Signals: PGP match + wallet match. RCS computed by confidence engine."},
+    {"kind": "relationship_added", "actor_code": "launderpipe", "occurred_at": "2026-08-29", "title": "POSSIBLY_SAME_AS relationship created (launderpipe → crimson_ledger)", "detail": "Signals: wallet match only. Single-signal correlation."},
+    {"kind": "relationship_added", "actor_code": "pharmakon", "occurred_at": "2026-08-26", "title": "POSSIBLY_SAME_AS relationship created (pharmakon → redsparrow)", "detail": "Weak signals. Rejected by analyst as false positive."},
     {"kind": "analyst_note", "actor_code": "pharmakon", "occurred_at": "2026-08-28", "title": "Analyst rejected pharmakon ↔ redsparrow relationship", "detail": "Shared XMPP is a false positive"},
 ]
 
@@ -347,7 +414,13 @@ ACTORS: list[dict[str, Any]] = [
         "first_seen": "2021-03-14",
         "last_seen": "2026-07-19",
         "last_scan_at": "2026-08-28T04:12:00",
-        "attributes": {"languages": ["en", "ru"], "active_hours_utc": "21:00-05:00", "listing_categories": ["credential_dumps", "card_data", "fullz"]},
+        "attributes": {
+            "languages": ["en", "ru"],
+            "active_hours_utc": "21:00-05:00",
+            "listing_categories": ["credential_dumps", "card_data", "fullz"],
+            "post_style": "terse numbered offers",
+            "summary_style": "credential dump listings with price tiers",
+        },
         "personas": [
             P("darkmerchant", "Silk Harbor Market", primary=True, vendor_tier="gold",
               reputation="4.8/5 - 1204 sales", first_seen="2021-03-14", last_seen="2026-07-19",
@@ -356,6 +429,7 @@ ACTORS: list[dict[str, Any]] = [
                   I("pgp_key", PGP_ALPHA, "vendor signing key", algorithm="RSA-4096"),
                   I("wallet", WALLET_ALPHA, "escrow payout address", chain="btc"),
                   I("onion_service", "sh7kqx2mfp4vbn3s.onion", "vendor shop mirror"),
+                  I("jabber", "dm-escrow@synthetic-xmpp.invalid", "escrow support contact"),
               ]),
             P("dark_merchant", "CipherTalk Forum", platform_type="forum",
               reputation="senior member - 3891 posts", first_seen="2021-05-02", last_seen="2026-06-30",
@@ -386,7 +460,14 @@ ACTORS: list[dict[str, Any]] = [
         "first_seen": "2025-10-02",
         "last_seen": "2026-08-21",
         "last_scan_at": "2026-08-28T04:19:00",
-        "attributes": {"languages": ["en"], "active_hours_utc": "20:00-04:00", "suspected_rebrand_of": "darkmerchant"},
+        "attributes": {
+            "languages": ["en"],
+            "active_hours_utc": "21:30-05:30",
+            "listing_categories": ["credential_dumps", "card_data"],
+            "post_style": "terse numbered offers",
+            "summary_style": "credential dump listings with price tiers",
+            "suspected_rebrand_of": "darkmerchant",
+        },
         "personas": [
             P("shadow_vendor", "Nightfall Bazaar", primary=True, vendor_tier="silver",
               reputation="4.7/5 - 386 sales", first_seen="2025-10-02", last_seen="2026-08-21",
@@ -395,6 +476,7 @@ ACTORS: list[dict[str, Any]] = [
                   I("pgp_key", PGP_ALPHA, "identical fingerprint to darkmerchant", algorithm="RSA-4096"),
                   I("wallet", WALLET_ALPHA, "identical payout address", chain="btc"),
                   I("onion_service", "nf4wq9zt6ry2plx8.onion", "shop mirror"),
+                  I("jabber", "dm-escrow@synthetic-xmpp.invalid", "same escrow support contact"),
               ]),
             P("shadowvendor", "CipherTalk Forum", platform_type="forum",
               reputation="member - 412 posts", first_seen="2025-10-11", last_seen="2026-08-18",
@@ -645,7 +727,7 @@ ACTORS: list[dict[str, Any]] = [
         "category": "weapons",
         "risk_level": "moderate",
         "status": "dormant",
-        "attribution_confidence": 33.0,
+        "attribution_confidence": 48.0,
         "summary": "Intermittent weapons-parts broker. Only clearnet-adjacent indicator is a certificate issuer reused by quietsteel's retired mirror.",
         "primary_source": "Transparency Log Mirror",
         "first_seen": "2022-11-11",
@@ -659,6 +741,7 @@ ACTORS: list[dict[str, Any]] = [
               identifiers=[
                   I("handle", "iron_broker"),
                   I("domain", "iron-broker-parts.invalid", "certificate subject CN"),
+                  I("pgp_key", "A0C4D82F61B935E7204C8AF3D91E56B7480CA2E9", "same cert fingerprint as quietsteel", algorithm="RSA-2048"),
               ]),
         ],
     },

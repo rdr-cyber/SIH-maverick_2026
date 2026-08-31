@@ -13,16 +13,18 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.models.identity import Actor
 from app.models.intel import Relationship
 from app.services.confidence import ConfidenceEngine
 
-router = APIRouter(prefix="/confidence", tags=["confidence"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/confidence", tags=["confidence"])
 
 
 @router.get(
@@ -48,11 +50,14 @@ def evaluate_confidence(
     """
     engine = ConfidenceEngine(session)
     result = engine.compute_confidence(actor_a, actor_b)
+    eq = result.evidence_quality
     return {
         "actor_a": result.actor_a,
         "actor_b": result.actor_b,
         "score": result.score,
         "band": result.band,
+        "raw_score": result.raw_score,
+        "weighted_score": result.weighted_score,
         "signals": [
             {
                 "signal_type": s.signal_type,
@@ -62,6 +67,9 @@ def evaluate_confidence(
                 "weighted_score": s.weighted_score,
                 "explanation": s.explanation,
                 "source_name": s.source_name,
+                "evidence_direction": s.evidence_direction,
+                "temporal_decay_factor": s.temporal_decay_factor,
+                "matched_values": s.matched_values,
             }
             for s in result.signals
         ],
@@ -69,6 +77,17 @@ def evaluate_confidence(
         "explanation": result.explanation,
         "hypothesis_label": result.hypothesis_label,
         "source_reliability_avg": result.source_reliability_avg,
+        "evidence_quality": {
+            "source_reliability_avg": eq.source_reliability_avg,
+            "temporal_consistency": eq.temporal_consistency,
+            "identifier_strength": eq.identifier_strength,
+            "supporting_count": eq.supporting_count,
+            "contradicting_count": eq.contradicting_count,
+            "neutral_count": eq.neutral_count,
+            "signal_families": eq.signal_families,
+            "cryptographic_signals": eq.cryptographic_signals,
+            "behavioral_signals": eq.behavioral_signals,
+        },
         "disclaimer": result.disclaimer,
     }
 

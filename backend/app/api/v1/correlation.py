@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.services.correlation import CorrelationEngine
 
-router = APIRouter(prefix="/correlation", tags=["correlation"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/correlation", tags=["correlation"])
 
 
 @router.get(
@@ -44,17 +46,28 @@ def evaluate_correlation(
         "actor_b": result.actor_b,
         "signals": [
             {
-                "type": s.type,
-                "value": s.value,
+                "signal_id": s.signal_id,
+                "signal_type": s.signal_type,
+                "source_entity": s.source_entity,
+                "target_entity": s.target_entity,
+                "raw_value": s.raw_value,
+                "normalized_value": s.normalized_value,
                 "strength": s.strength,
                 "source": s.source,
                 "timestamp": s.timestamp,
                 "explanation": s.explanation,
                 "weight": s.weight,
-                "score": s.score,
+                "raw_score": s.raw_score,
+                "weighted_score": s.weighted_score,
+                "evidence_direction": s.evidence_direction,
+                "temporal_decay_factor": s.temporal_decay_factor,
+                "source_reliability": s.source_reliability,
+                "details": s.details,
             }
             for s in result.signals
         ],
+        "raw_score": result.raw_score,
+        "weighted_score": result.weighted_score,
         "total_score": result.total_score,
         "band": result.band,
         "explanation": result.explanation,

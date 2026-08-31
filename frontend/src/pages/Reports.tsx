@@ -82,7 +82,7 @@ export default function Reports() {
       <div className="flex gap-4">
         {/* Investigation list */}
         <div className="w-72 shrink-0">
-          <div className="sg-panel divide-y divide-line overflow-hidden">
+          <div className="mp-panel divide-y divide-line overflow-hidden">
             {investigations.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-500">No investigations</div>
             ) : (
@@ -98,7 +98,7 @@ export default function Reports() {
                 >
                   <span className="text-sm font-medium text-slate-200">{inv.title}</span>
                   <div className="mt-0.5 flex items-center gap-2">
-                    <span className="font-mono-tech text-[10px] text-slate-500">{inv.code}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{inv.code}</span>
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${
                       inv.status === "active"
                         ? "border-green-500/30 bg-green-500/15 text-green-400"
@@ -120,7 +120,7 @@ export default function Reports() {
           ) : report ? (
             <ReportPreview report={report} />
           ) : (
-            <div className="sg-panel flex flex-col items-center justify-center py-16">
+            <div className="mp-panel flex flex-col items-center justify-center py-16">
               <p className="text-sm text-slate-400">Select an investigation to generate a report</p>
               <p className="mt-1 text-xs text-slate-600">
                 Reports include all sections: targets, relationships, evidence, timeline, confidence, and audit
@@ -147,7 +147,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
   return (
     <div className="space-y-4">
       {/* Header + exports */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-sm font-medium text-slate-200">
@@ -177,7 +177,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
       </div>
 
       {/* Section overview */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <h3 className="mb-2 text-sm font-medium text-slate-300">Report Sections</h3>
         <div className="grid grid-cols-4 gap-2">
           {sections.map((k) => {
@@ -186,7 +186,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
             return (
               <div key={k} className="rounded border border-line bg-panel2 px-3 py-2">
                 <p className="text-[10px] text-slate-500">{SECTION_LABELS[k] ?? k}</p>
-                <p className="font-mono-tech text-xs text-slate-300">
+                <p className="font-mono text-xs text-slate-300">
                   {count > 0 ? `${count} item${count !== 1 ? "s" : ""}` : "empty"}
                 </p>
               </div>
@@ -197,7 +197,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
 
       {/* Targets preview */}
       {targets.length > 0 && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <h3 className="mb-2 text-sm font-medium text-slate-300">Targets</h3>
           <div className="space-y-2">
             {targets.map((t, i) => (
@@ -221,7 +221,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
 
       {/* Relationships preview */}
       {relationships.length > 0 && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <h3 className="mb-2 text-sm font-medium text-slate-300">Relationships</h3>
           <div className="space-y-2">
             {relationships.map((r, i) => (
@@ -230,7 +230,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
                   <span className="text-sm font-medium text-slate-200">
                     {String(r.from_actor)} ↔ {String(r.to_actor)}
                   </span>
-                  <span className="font-mono-tech text-xs text-teal-400">RCS {String(r.confidence)}</span>
+                  <span className="font-mono text-xs text-teal-400">RCS {String(r.confidence)}</span>
                   <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${
                     r.status === "accepted"
                       ? "border-green-500/30 bg-green-500/15 text-green-400"
@@ -249,7 +249,7 @@ function ReportPreview({ report }: { report: Record<string, unknown> }) {
 
       {/* Audit trail */}
       {audit.length > 0 && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <h3 className="mb-2 text-sm font-medium text-slate-300">Audit Trail</h3>
           <div className="space-y-1">
             {audit.map((a, i) => (

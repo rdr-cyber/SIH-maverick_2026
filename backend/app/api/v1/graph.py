@@ -7,12 +7,14 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.repositories.graph import GraphRepository
 
-router = APIRouter(prefix="/graph", tags=["graph"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/graph", tags=["graph"])
 
 
 @router.get(

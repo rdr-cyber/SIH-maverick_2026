@@ -571,7 +571,7 @@ def export_pdf(report: dict[str, Any]) -> bytes:
     # Title page
     pdf.add_page()
     pdf.set_font('Helvetica', 'B', 20)
-    pdf.cell(0, 12, 'SHADOWGRAPH Investigation Report', new_x='LMARGIN', new_y='NEXT', align='C')
+    pdf.cell(0, 12, 'MAVERICKS PROJECT Investigation Report', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.ln(5)
     pdf.set_font('Helvetica', '', 12)
     inv = report['investigation']

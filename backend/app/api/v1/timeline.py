@@ -8,13 +8,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.models.intel import TIMELINE_EVENT_KINDS
 from app.services.timeline import TimelineService
 
-router = APIRouter(prefix="/timeline", tags=["timeline"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/timeline", tags=["timeline"])
 
 
 @router.get(

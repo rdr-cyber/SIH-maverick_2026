@@ -1,25 +1,34 @@
-/** Colored badge for risk levels and confidence bands. */
+/** Colored badge for risk levels, confidence bands, and status. */
 
 const RISK_COLORS: Record<string, string> = {
-  critical: "bg-red-500/15 text-red-400 border-red-500/30",
-  high: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  moderate: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  low: "bg-green-500/15 text-green-400 border-green-500/30",
-  // Confidence bands
-  very_high: "bg-red-500/15 text-red-400 border-red-500/30",
-  weak: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  critical: "border-red-500/30 bg-red-500/10 text-red-400",
+  high: "border-orange-500/30 bg-orange-500/10 text-orange-400",
+  moderate: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
+  low: "border-green-500/30 bg-green-500/10 text-green-400",
+  very_high: "border-red-500/30 bg-red-500/10 text-red-400",
+  weak: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+};
+
+const BAND_COLORS: Record<string, string> = {
+  high: "border-green-500/30 bg-green-500/10 text-green-400",
+  medium: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
+  low: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  weak: "border-slate-500/30 bg-slate-500/10 text-slate-400",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  accepted: "bg-green-500/15 text-green-400 border-green-500/30",
-  rejected: "bg-red-500/15 text-red-400 border-red-500/30",
-  uncertain: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  tracked: "bg-teal-500/15 text-teal-400 border-teal-500/30",
-  dormant: "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  archived: "bg-slate-500/10 text-slate-500 border-slate-600/30",
-  active: "bg-green-500/15 text-green-400 border-green-500/30",
-  inactive: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  pending: "border-blue-500/30 bg-blue-500/10 text-blue-400",
+  accepted: "border-green-500/30 bg-green-500/10 text-green-400",
+  rejected: "border-red-500/30 bg-red-500/10 text-red-400",
+  uncertain: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
+  tracked: "border-accent/30 bg-accent/10 text-accentLight",
+  dormant: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  archived: "border-slate-600/20 bg-slate-600/10 text-slate-500",
+  active: "border-green-500/30 bg-green-500/10 text-green-400",
+  inactive: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  draft: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  paused: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
+  closed: "border-slate-600/20 bg-slate-600/10 text-slate-500",
 };
 
 export function RiskBadge({
@@ -30,17 +39,10 @@ export function RiskBadge({
   variant?: "risk" | "status" | "band";
 }) {
   const palette =
-    variant === "risk"
-      ? RISK_COLORS
-      : variant === "band"
-        ? RISK_COLORS
-        : STATUS_COLORS;
-  const cls =
-    palette[value] ?? "bg-slate-500/15 text-slate-400 border-slate-500/30";
+    variant === "band" ? BAND_COLORS : variant === "status" ? STATUS_COLORS : RISK_COLORS;
+  const cls = palette[value] ?? "border-slate-500/30 bg-slate-500/10 text-slate-400";
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}
-    >
+    <span className={`mp-badge ${cls}`}>
       {value}
     </span>
   );

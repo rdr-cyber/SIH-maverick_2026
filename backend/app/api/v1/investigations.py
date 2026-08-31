@@ -10,13 +10,15 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Query
+from fastapi import APIRouter, Depends, Body, Query
 from pydantic import BaseModel
 
-from app.api.deps import DbSession
+from app.api.auth import get_current_user, require_role
+from app.api.deps import DbSession, CurrentUser
 from app.services.investigations import InvestigationService
 
-router = APIRouter(prefix="/investigations", tags=["investigations"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/investigations", tags=["investigations"])
 
 
 # ------------------------------------------------------------------
@@ -65,10 +67,12 @@ def get_investigation(session: DbSession, code: str) -> dict:
     return result
 
 
-@router.post("", status_code=201, summary="Create a new investigation")
+@router.post("", status_code=201, summary="Create a new investigation",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
 def create_investigation(
     session: DbSession,
     body: CreateInvestigationRequest,
+    user: CurrentUser = Depends(get_current_user),
 ) -> dict:
     svc = InvestigationService(session)
     try:
@@ -87,8 +91,10 @@ def create_investigation(
 # Status transitions
 # ------------------------------------------------------------------
 
-@router.post("/{code}/activate", summary="Activate investigation")
-def activate(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+@router.post("/{code}/activate", summary="Activate investigation",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
+def activate(session: DbSession, code: str, analyst: str = Query(...),
+             user: CurrentUser = Depends(get_current_user)) -> dict:
     svc = InvestigationService(session)
     try:
         return svc.activate(code, analyst)
@@ -96,8 +102,10 @@ def activate(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
         return {"error": str(e)}
 
 
-@router.post("/{code}/pause", summary="Pause investigation")
-def pause(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+@router.post("/{code}/pause", summary="Pause investigation",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
+def pause(session: DbSession, code: str, analyst: str = Query(...),
+          user: CurrentUser = Depends(get_current_user)) -> dict:
     svc = InvestigationService(session)
     try:
         return svc.pause(code, analyst)
@@ -105,8 +113,10 @@ def pause(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
         return {"error": str(e)}
 
 
-@router.post("/{code}/close", summary="Close investigation")
-def close(session: DbSession, code: str, analyst: str = Query(...)) -> dict:
+@router.post("/{code}/close", summary="Close investigation",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
+def close(session: DbSession, code: str, analyst: str = Query(...),
+          user: CurrentUser = Depends(get_current_user)) -> dict:
     svc = InvestigationService(session)
     try:
         return svc.close_investigation(code, analyst)
@@ -132,7 +142,8 @@ def add_note(session: DbSession, code: str, body: AddNoteRequest) -> dict:
 # ------------------------------------------------------------------
 
 @router.post("/decide", summary="Analyst decides on a relationship")
-def decide(session: DbSession, body: DecideRelationshipRequest) -> dict:
+def decide(session: DbSession, body: DecideRelationshipRequest,
+           user: CurrentUser = Depends(get_current_user)) -> dict:
     svc = InvestigationService(session)
     try:
         return svc.decide_relationship(

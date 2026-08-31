@@ -14,15 +14,20 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.models.intel import CONFIDENCE_BANDS, EVIDENCE_KINDS, RELATIONSHIP_KINDS, RELATIONSHIP_STATUS
 from app.schemas.common import ErrorResponse
 from app.schemas.evidence import RelationshipDetail, RelationshipOut
 from app.services.evidence import EvidenceService, RelationshipNotFound
 
-router = APIRouter(prefix="/evidence", tags=["evidence"])
+router = APIRouter(
+    prefix="/evidence",
+    tags=["evidence"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get(

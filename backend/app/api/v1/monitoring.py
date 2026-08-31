@@ -12,9 +12,10 @@ Provides:
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, text
 
+from app.api.auth import get_current_user
 from app.api.deps import DbSession
 from app.core.config import settings
 from app.core.tasks import get_task_backend
@@ -22,7 +23,8 @@ from app.models.identity import Actor, Identifier, Persona, Source
 from app.models.intel import Evidence, Relationship, TimelineEvent
 from app.models.ops import AuditEvent
 
-router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],prefix="/monitoring", tags=["monitoring"])
 
 
 @router.get("/overview", summary="System monitoring overview")

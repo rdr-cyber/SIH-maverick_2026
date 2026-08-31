@@ -22,7 +22,7 @@ class ScoringFactor(BaseModel):
 
     signal: str
     weight: int
-    score: int
+    score: float
     note: str
 
 

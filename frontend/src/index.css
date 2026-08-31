@@ -5,11 +5,15 @@
 @layer base {
   :root {
     color-scheme: dark;
-    --sg-bg: #0b0f17;
-    --sg-panel: #111827;
-    --sg-line: #1f2937;
-    --sg-accent: #3d7a8c;
-    --sg-focus: #7dd3c7;
+    --mp-bg: #090c10;
+    --mp-panel: #0f1218;
+    --mp-panel2: #141820;
+    --mp-line: #1c2230;
+    --mp-accent: #2d8a7e;
+    --mp-accent-light: #3aa898;
+    --mp-text: #c8cdd6;
+    --mp-text-dim: #6b7280;
+    --mp-focus: #3aa898;
   }
 
   html,
@@ -19,43 +23,81 @@
   }
 
   body {
-    @apply bg-base text-slate-300 antialiased;
-    font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+    @apply bg-base text-slate-400 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1c2230 transparent;
   }
 
   :focus-visible {
-    outline: 2px solid var(--sg-focus);
-    outline-offset: 2px;
+    outline: 1.5px solid var(--mp-focus);
+    outline-offset: 1px;
   }
 
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0f1420;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #283247;
-    border-radius: 6px;
-    border: 2px solid #0f1420;
+    background: #1c2230;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3d4d66;
+    background: #283247;
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(45, 138, 126, 0.25);
   }
 }
 
 @layer components {
-  .sg-panel {
-    @apply rounded-lg border border-slate-800 bg-panel shadow-sm;
+  /* Panel: the primary container primitive */
+  .mp-panel {
+    @apply rounded border border-line bg-panel;
   }
-  .sg-input {
-    @apply w-full rounded-md border border-slate-700 bg-panel2 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-teal-700 focus:ring-1 focus:ring-teal-700/40;
+
+  /* Input: form fields */
+  .mp-input {
+    @apply w-full rounded border border-line bg-panel2 px-2.5 py-1.5 text-slate-300 placeholder-slate-600 outline-none transition-colors;
+    font-size: 12px;
+  }
+  .mp-input:focus {
+    @apply border-accent ring-1 ring-accent/20;
+  }
+
+  /* Badge: inline label */
+  .mp-badge {
+    @apply inline-flex items-center rounded-sm border px-1.5 py-px font-medium;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Stat: compact metric display */
+  .mp-stat-value {
+    @apply font-mono text-xl font-semibold tracking-tight text-slate-200;
+  }
+  .mp-stat-label {
+    @apply text-2xs uppercase tracking-wider text-slate-500;
+  }
+
+  /* Section header */
+  .mp-section-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-400;
   }
 }
 
 @layer utilities {
-  .font-mono-tech {
-    font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace;
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
   }
 }

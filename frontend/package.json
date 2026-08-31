@@ -2,7 +2,7 @@
   "name": "shadowgraph-frontend",
   "private": true,
   "version": "0.1.0",
-  "description": "SHADOWGRAPH — dark-web threat actor investigation dashboard (frontend)",
+  "description": "MAVERICKS PROJECT — Investigative Intelligence Platform (frontend)",
   "type": "module",
   "scripts": {
     "dev": "vite",

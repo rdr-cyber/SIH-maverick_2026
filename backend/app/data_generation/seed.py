@@ -200,6 +200,27 @@ def seed_database(*, reset: bool = False, session: Optional[Session] = None) -> 
                 row.to_id = to_actor.id
         db.flush()
 
+        # --- recompute relationship confidence from engines -----------------
+        # The confidence engine is the single source of truth for RCS.
+        # We recompute after all actors and identifiers are loaded so that
+        # the stored score matches what the API serves at runtime.
+        try:
+            from app.services.confidence import ConfidenceEngine
+            ce = ConfidenceEngine(db)
+            for spec in RELATIONSHIPS:
+                if spec.get("kind") == "POSSIBLY_SAME_AS":
+                    row = rel_index.get(spec["code"])
+                    if row and row.from_id and row.to_id:
+                        from_actor = actor_index.get(spec["from_code"])
+                        to_actor = actor_index.get(spec["to_code"])
+                        if from_actor and to_actor:
+                            cr = ce.compute_confidence(from_actor.code, to_actor.code)
+                            row.confidence = cr.score
+                            row.band = cr.band.lower()
+            db.flush()
+        except Exception as exc:
+            log.warning("confidence recomputation skipped: %s", exc)
+
         # --- evidence ---------------------------------------------------------
         ev_index = {e.code: e for e in db.execute(select(Evidence)).scalars()}
         for spec in EVIDENCE:

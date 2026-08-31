@@ -99,6 +99,79 @@ export interface ScoringFactor {
   note: string;
 }
 
+export interface CorrelationSignal {
+  signal_id: string;
+  signal_type: string;
+  source_entity: string;
+  target_entity: string;
+  raw_value: string | number;
+  normalized_value: string | number;
+  strength: string;
+  source: string;
+  timestamp: string;
+  explanation: string;
+  weight: number;
+  raw_score: number;
+  weighted_score: number;
+  evidence_direction: string;
+  temporal_decay_factor: number;
+  source_reliability: number;
+  details: Record<string, unknown>;
+}
+
+export interface ConfidenceSignal {
+  signal_type: string;
+  raw_score: number;
+  weight: number;
+  source_reliability: number;
+  weighted_score: number;
+  explanation: string;
+  source_name: string;
+  evidence_direction: string;
+  temporal_decay_factor: number;
+  matched_values: Record<string, unknown>;
+}
+
+export interface EvidenceQuality {
+  source_reliability_avg: number;
+  temporal_consistency: string;
+  identifier_strength: string;
+  supporting_count: number;
+  contradicting_count: number;
+  neutral_count: number;
+  signal_families: number;
+  cryptographic_signals: number;
+  behavioral_signals: number;
+}
+
+export interface CorrelationResult {
+  actor_a: string;
+  actor_b: string;
+  signals: CorrelationSignal[];
+  raw_score: number;
+  weighted_score: number;
+  total_score: number;
+  band: string;
+  explanation: string;
+  hypothesis_label: string;
+}
+
+export interface ConfidenceResult {
+  actor_a: string;
+  actor_b: string;
+  score: number;
+  band: string;
+  raw_score: number;
+  weighted_score: number;
+  signals: ConfidenceSignal[];
+  derivation: string[];
+  explanation: string;
+  hypothesis_label: string;
+  source_reliability_avg: number;
+  evidence_quality: EvidenceQuality;
+  disclaimer: string;
+}
+
 export interface RelationshipSummary {
   id: string;
   code: string;

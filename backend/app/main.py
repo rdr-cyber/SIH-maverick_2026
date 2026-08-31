@@ -29,7 +29,7 @@ from app.services.actors import ActorNotFound
 log = logging.getLogger(__name__)
 
 DESCRIPTION = """
-Explainable dark-web threat-actor correlation platform (SIH PS 26151, NTRO).
+MAVERICKS PROJECT - Investigative Intelligence Platform (SIH PS 26151, NTRO).
 
 All data served by this API is **synthetic**. Relationship scores are decision
 heuristics for analysts, never claims about a real person's identity.

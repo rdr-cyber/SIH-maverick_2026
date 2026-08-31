@@ -7,6 +7,9 @@ import {
   fetchMonitoringOverview,
   fetchMonitoringSources,
   fetchMonitoringRelationships,
+  runIngestionScan,
+  fetchIngestionStatus,
+  type IngestionResult,
 } from "@/api/client";
 import type {
   MonitoringOverview,
@@ -32,6 +35,9 @@ export default function Monitoring() {
   const [overview, setOverview] = useState<MonitoringOverview | null>(null);
   const [sources, setSources] = useState<MonitoringSource[]>([]);
   const [relationships, setRelationships] = useState<MonitoringRelationships | null>(null);
+  const [ingestionResults, setIngestionResults] = useState<IngestionResult[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [scanScenario, setScanScenario] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,14 +45,16 @@ export default function Monitoring() {
     setLoading(true);
     setError(null);
     try {
-      const [ov, src, rel] = await Promise.all([
+      const [ov, src, rel, ing] = await Promise.all([
         fetchMonitoringOverview(),
         fetchMonitoringSources(),
         fetchMonitoringRelationships(),
+        fetchIngestionStatus(5),
       ]);
       setOverview(ov);
       setSources(src);
       setRelationships(rel);
+      setIngestionResults(ing);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -98,12 +106,12 @@ export default function Monitoring() {
 
       {/* Entity counts */}
       {overview && (
-        <div className="sg-panel p-4">
+        <div className="mp-panel p-4">
           <h3 className="mb-3 text-sm font-medium text-slate-300">Entity Counts</h3>
           <div className="grid grid-cols-7 gap-2">
             {Object.entries(overview.entities).map(([key, val]) => (
               <div key={key} className="text-center">
-                <p className="font-mono-tech text-lg text-teal-400">{val}</p>
+                <p className="font-mono text-lg text-teal-400">{val}</p>
                 <p className="text-[10px] text-slate-500">{key.replace(/_/g, " ")}</p>
               </div>
             ))}
@@ -112,7 +120,7 @@ export default function Monitoring() {
       )}
 
       {/* Source status */}
-      <div className="sg-panel p-4">
+      <div className="mp-panel p-4">
         <h3 className="mb-3 text-sm font-medium text-slate-300">Source Scan Status</h3>
         <div className="space-y-2">
           {sources.map((src) => (
@@ -133,28 +141,28 @@ export default function Monitoring() {
                       style={{ width: `${src.reliability}%` }}
                     />
                   </div>
-                  <span className={`font-mono-tech text-xs ${RELIABILITY_COLOR(src.reliability)}`}>
+                  <span className={`font-mono text-xs ${RELIABILITY_COLOR(src.reliability)}`}>
                     {src.reliability}
                   </span>
                 </div>
               </div>
               <div className="flex gap-4 text-center">
                 <div>
-                  <p className="font-mono-tech text-xs text-slate-300">{src.actors}</p>
+                  <p className="font-mono text-xs text-slate-300">{src.actors}</p>
                   <p className="text-[9px] text-slate-600">actors</p>
                 </div>
                 <div>
-                  <p className="font-mono-tech text-xs text-slate-300">{src.personas}</p>
+                  <p className="font-mono text-xs text-slate-300">{src.personas}</p>
                   <p className="text-[9px] text-slate-600">personas</p>
                 </div>
                 <div>
-                  <p className="font-mono-tech text-xs text-slate-300">{src.identifiers}</p>
+                  <p className="font-mono text-xs text-slate-300">{src.identifiers}</p>
                   <p className="text-[9px] text-slate-600">ids</p>
                 </div>
               </div>
               <div className="w-32 text-right">
                 <p className="text-[10px] text-slate-500">Last scan</p>
-                <p className="font-mono-tech text-[11px] text-slate-400">
+                <p className="font-mono text-[11px] text-slate-400">
                   {src.last_scanned_at
                     ? new Date(src.last_scanned_at).toLocaleDateString()
                     : "Never"}
@@ -179,7 +187,7 @@ export default function Monitoring() {
       {/* Relationship breakdown */}
       {relationships && (
         <div className="grid grid-cols-2 gap-4">
-          <div className="sg-panel p-4">
+          <div className="mp-panel p-4">
             <h3 className="mb-3 text-sm font-medium text-slate-300">Relationships by Status</h3>
             <div className="space-y-2">
               {Object.entries(relationships.by_status).map(([status, count]) => (
@@ -195,13 +203,13 @@ export default function Monitoring() {
                       />
                     </div>
                   </div>
-                  <span className="font-mono-tech text-xs text-slate-400">{count}</span>
+                  <span className="font-mono text-xs text-slate-400">{count}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="sg-panel p-4">
+          <div className="mp-panel p-4">
             <h3 className="mb-3 text-sm font-medium text-slate-300">Relationships by Band</h3>
             <div className="space-y-2">
               {Object.entries(relationships.by_band).map(([band, count]) => (
@@ -217,7 +225,7 @@ export default function Monitoring() {
                       />
                     </div>
                   </div>
-                  <span className="font-mono-tech text-xs text-slate-400">{count}</span>
+                  <span className="font-mono text-xs text-slate-400">{count}</span>
                 </div>
               ))}
             </div>
@@ -231,6 +239,119 @@ export default function Monitoring() {
           </div>
         </div>
       )}
+
+      {/* Ingestion Pipeline */}
+      <div className="mp-panel p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-slate-300">Data Ingestion Pipeline</h3>
+            <p className="text-[10px] text-slate-500">
+              Run synthetic fixtures through the real extraction → resolution → correlation pipeline
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={scanScenario}
+              onChange={(e) => setScanScenario(e.target.value)}
+              className="rounded border border-line bg-panel2 px-2 py-1 text-xs text-slate-300"
+              disabled={scanning}
+            >
+              <option value="all">All Scenarios</option>
+              <option value="darkmerchant">DarkMerchant</option>
+              <option value="launderpipe">LaunderPipe</option>
+              <option value="pharmakon">Pharmakon</option>
+            </select>
+            <button
+              onClick={async () => {
+                setScanning(true);
+                try {
+                  const result = await runIngestionScan(scanScenario);
+                  setIngestionResults((prev) => [result, ...prev].slice(0, 10));
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Scan failed");
+                } finally {
+                  setScanning(false);
+                }
+              }}
+              disabled={scanning}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                scanning
+                  ? "cursor-not-allowed border border-slate-600/30 bg-slate-600/15 text-slate-500"
+                  : "border border-teal-500/30 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25"
+              }`}
+            >
+              {scanning ? "⏳ Scanning…" : "▶ Run Synthetic Scan"}
+            </button>
+          </div>
+        </div>
+
+        {/* Recent scan results */}
+        {ingestionResults.length > 0 && (
+          <div className="space-y-2">
+            {ingestionResults.map((result, idx) => (
+              <div
+                key={`${result.task_id}-${idx}`}
+                className="rounded border border-line bg-panel2 px-3 py-2"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${
+                          result.status === "completed"
+                            ? "border-green-500/30 bg-green-500/15 text-green-400"
+                            : result.status === "failed"
+                              ? "border-red-500/30 bg-red-500/15 text-red-400"
+                              : "border-yellow-500/30 bg-yellow-500/15 text-yellow-400"
+                        }`}
+                      >
+                        {result.status}
+                      </span>
+                      <span className="text-xs text-slate-300">{result.source}</span>
+                      {result.scenario && (
+                        <span className="text-[10px] text-slate-500">({result.scenario})</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-4 text-center">
+                    <div>
+                      <p className="font-mono text-xs text-slate-300">{result.observations_processed}</p>
+                      <p className="text-[9px] text-slate-600">obs</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs text-slate-300">{result.entities_extracted}</p>
+                      <p className="text-[9px] text-slate-600">extracted</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs text-slate-300">{result.entities_resolved}</p>
+                      <p className="text-[9px] text-slate-600">resolved</p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs text-teal-400">{result.relationships_created}</p>
+                      <p className="text-[9px] text-slate-600">rels</p>
+                    </div>
+                  </div>
+                  {result.completed_at && (
+                    <div className="w-32 text-right">
+                      <p className="text-[10px] text-slate-500">Completed</p>
+                      <p className="font-mono text-[11px] text-slate-400">
+                        {new Date(result.completed_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {result.errors.length > 0 && (
+                  <div className="mt-1">
+                    {result.errors.map((err, i) => (
+                      <p key={i} className="text-[10px] text-red-400">⚠ {err}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Disclaimer */}
       {overview && (
@@ -254,9 +375,9 @@ function MetricCard({
   color?: string;
 }) {
   return (
-    <div className="sg-panel p-3">
+    <div className="mp-panel p-3">
       <p className="text-[10px] text-slate-500">{label}</p>
-      <p className={`mt-0.5 font-mono-tech text-sm ${color ?? "text-slate-200"}`}>{value}</p>
+      <p className={`mt-0.5 font-mono text-sm ${color ?? "text-slate-200"}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[10px] text-slate-600">{sub}</p>}
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * SHADOWGRAPH API client.
+ * MAVERICKS PROJECT API client.
  *
  * All data comes from the real backend.  No mock data, no fake success states.
  * If the backend is unreachable the caller receives an error — the UI renders
@@ -11,6 +11,8 @@ import type {
   ActorStats,
   ActorSummary,
   AuditEvent,
+  ConfidenceResult,
+  CorrelationResult,
   Evidence,
   HealthResponse,
   InvestigationDetail,
@@ -24,13 +26,21 @@ import type {
   RelationshipSummary,
 } from "./types";
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
+const BASE = "/api/v1";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const { authHeaders } = await import("./auth");
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     ...init,
   });
+  if (res.status === 401) {
+    // Token expired or invalid — clear and reload
+    const { removeToken } = await import("./auth");
+    removeToken();
+    window.location.reload();
+    throw new ApiError(401, "Session expired");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     throw new ApiError(res.status, body.detail ?? res.statusText);
@@ -217,6 +227,70 @@ export function fetchMonitoringRelationships(): Promise<MonitoringRelationships>
 
 export function fetchMonitoringTimeline(): Promise<MonitoringTimeline> {
   return api<MonitoringTimeline>("/monitoring/timeline");
+}
+
+// ---------------------------------------------------------------------------
+// Correlation & Confidence
+
+export function fetchCorrelation(actorA: string, actorB: string): Promise<CorrelationResult> {
+  return api<CorrelationResult>(`/correlation/evaluate?actor_a=${encodeURIComponent(actorA)}&actor_b=${encodeURIComponent(actorB)}`);
+}
+
+export function fetchConfidence(actorA: string, actorB: string): Promise<ConfidenceResult> {
+  return api<ConfidenceResult>(`/confidence/evaluate?actor_a=${encodeURIComponent(actorA)}&actor_b=${encodeURIComponent(actorB)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Ingestion
+// ---------------------------------------------------------------------------
+
+export interface IngestionResult {
+  task_id: string;
+  source: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  observations_processed: number;
+  entities_extracted: number;
+  entities_resolved: number;
+  relationships_created: number;
+  timeline_events_created: number;
+  errors: string[];
+  scenario?: string;
+}
+
+export interface IngestionProvenance {
+  relationship_code: string;
+  kind: string;
+  from_actor: string;
+  to_actor: string;
+  confidence: number;
+  band: string;
+  source: string;
+  source_kind: string;
+  first_seen: string | null;
+  explanation: string | null;
+  scoring_factors: Array<{ signal: string; weight: number; score: number; note: string }>;
+}
+
+export function runIngestionScan(scenario: string = "all"): Promise<IngestionResult> {
+  return api<IngestionResult>(`/ingestion/scan?scenario=${encodeURIComponent(scenario)}`);
+}
+
+export function fetchIngestionStatus(limit: number = 10): Promise<IngestionResult[]> {
+  return api<IngestionResult[]>(`/ingestion/status?limit=${limit}`);
+}
+
+export function fetchIngestionProvenance(params: {
+  actor_code?: string;
+  limit?: number;
+} = {}): Promise<IngestionProvenance[]> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  }
+  const q = qs.toString();
+  return api<IngestionProvenance[]>(`/ingestion/provenance${q ? `?${q}` : ""}`);
 }
 
 // ---------------------------------------------------------------------------
