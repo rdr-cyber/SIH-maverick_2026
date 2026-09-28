@@ -109,24 +109,24 @@ JABBER_SHARED = "obsidian.ops@synthetic-xmpp.invalid"
 # ---------------------------------------------------------------------------
 ANALYSTS: list[dict[str, Any]] = [
     {
-        "username": "admin",
+        "username": "ami",
         "full_name": "System Administrator",
-        "email": "admin@shadowgraph.local",
-        "password": "admin123",
+        "email": "ami@mavericks.local",
+        "password": "ami43210",
         "role": "admin",
     },
     {
-        "username": "jmartinez",
-        "full_name": "J. Martinez",
-        "email": "jmartinez@shadowgraph.local",
-        "password": "analyst123",
+        "username": "amra",
+        "full_name": "Amra",
+        "email": "amra@mavericks.local",
+        "password": "amra4321",
         "role": "senior_analyst",
     },
     {
-        "username": "akim",
-        "full_name": "A. Kim",
-        "email": "akim@shadowgraph.local",
-        "password": "analyst123",
+        "username": "tumi",
+        "full_name": "Tumi",
+        "email": "tumi@mavericks.local",
+        "password": "tumi1430",
         "role": "analyst",
     },
 ]
@@ -140,7 +140,7 @@ INVESTIGATIONS: list[dict[str, Any]] = [
         "title": "DarkMerchant Identity Correlation",
         "description": "Investigate whether shadow_vendor is a rebrand of darkmerchant based on PGP, wallet, stylometric, and behavioral signals.",
         "status": "active",
-        "lead_analyst": "jmartinez",
+        "lead_analyst": "amra",
         "targets": ["darkmerchant", "shadow_vendor"],
         "parameters": {
             "min_confidence": 40,
@@ -152,7 +152,7 @@ INVESTIGATIONS: list[dict[str, Any]] = [
         "title": "LaunderPipe Wallet Overlap",
         "description": "Assess whether the shared BTC consolidation address between launderpipe and crimson_ledger indicates identity or mere financial interaction.",
         "status": "draft",
-        "lead_analyst": "akim",
+        "lead_analyst": "tumi",
         "targets": ["launderpipe", "crimson_ledger"],
         "parameters": {"min_confidence": 25},
     },

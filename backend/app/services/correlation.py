@@ -1140,7 +1140,7 @@ class CorrelationEngine:
         """Get the average source reliability for an actor's identifiers."""
         from app.models.identity import Source
         stmt = (
-            select(Source.reliability)
+            select(Source.trust_level)
             .join(Identifier, Identifier.source_id == Source.id)
             .where(Identifier.actor_id == actor.id)
         )
@@ -1149,7 +1149,7 @@ class CorrelationEngine:
             return sum(reliabilities) / len(reliabilities)
         if actor.primary_source_id:
             source = self.session.execute(
-                select(Source.reliability).where(Source.id == actor.primary_source_id)
+                select(Source.trust_level).where(Source.id == actor.primary_source_id)
             ).scalar_one_or_none()
             if source is not None:
                 return float(source)

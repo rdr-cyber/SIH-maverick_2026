@@ -1,9 +1,8 @@
-# MAVERICKS PROJECT Preview Run Doc
+# TRILOK TRACE Preview Run Doc
 
 ## How to Reproduce Uncommitted Artifacts
 
 1. No `.env.local` needed — local mode uses SQLite with zero configuration.
-
 2. Backend needs no pre-build step.
 
 ## How to Run the Servers
@@ -31,12 +30,22 @@ This avoids CORS issues and works regardless of which port Vite picks.
 
 ### Access
 
-- Frontend: http://localhost:5173 (or next free port — Vite auto-picks)
+- Frontend: http://localhost:5173
 - Backend API: http://localhost:8000/api/v1
 - API docs: http://localhost:8000/docs
 
-## Current State
+### Demo Credentials
 
-- Frontend running on port **5175** (Vite picked this because 5173/5174 were occupied)
-- Backend running on port **8000**
-- CORS configured for ports 5173-5176
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | ami | ami43210 |
+| Senior Analyst | amra | amra4321 |
+| Analyst | tumi | tumi1430 |
+
+## Current State (verified 2026-09-01)
+
+- Frontend: port **5173** (Vite) — PID 3520
+- Backend: port **8000** (uvicorn) — PID 7728
+- API proxy: `/api` → `http://127.0.0.1:8000` via Vite config
+- CORS: ports 5173–5176 whitelisted
+- Dashboard: real API data verified (13 actors, 17 personas, 56 identifiers, RCS 62.7 MEDIUM)

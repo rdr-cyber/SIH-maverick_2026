@@ -577,21 +577,32 @@ def run_ingestion_pipeline(
 
     for obs in observations:
         try:
-            # 1. Get or create source
+            # 1. Resolve the source and enforce the DATABASE.md §2 boundary
+            #    BEFORE any write. Sources must be registered (and enabled,
+            #    with access_method synthetic|authorized|public) ahead of
+            #    ingestion — the pipeline never self-registers a source it
+            #    was merely told about. Unknown names are recorded as errors.
             source = session.execute(
                 select(Source).where(Source.name == obs.source_name)
             ).scalar_one_or_none()
 
-            if not source:
-                source = Source(
-                    name=obs.source_name,
-                    kind=obs.source_type,
-                    reliability=50,
-                    description=f"Auto-created from ingestion: {obs.source_name}",
-                    access_method="synthetic",
+            from app.ingestion.boundary import (
+                ForbiddenSourceError,
+                assert_source_allowed,
+            )
+
+            try:
+                assert_source_allowed(source, source_name=obs.source_name)
+            except ForbiddenSourceError as exc:
+                result.errors.append(
+                    {
+                        "record": obs.external_id,
+                        "reason": "source_not_ingestable",
+                        "detail": str(exc),
+                    }
                 )
-                session.add(source)
-                session.flush()
+                log.warning("boundary refused source %r: %s", obs.source_name, exc)
+                continue
 
             # 2. Extract entities from fields (structured data)
             field_entities = extract_entities_from_fields(obs)

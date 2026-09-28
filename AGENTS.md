@@ -1,4 +1,4 @@
-# AGENTS.md — SHADOWGRAPH Session Learnings
+# AGENTS.md — TRILOK TRACE Session Learnings
 
 ## Architecture
 

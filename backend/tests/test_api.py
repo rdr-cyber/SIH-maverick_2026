@@ -23,7 +23,7 @@ client = TestClient(app, raise_server_exceptions=False)
 client.__enter__()
 
 # Authenticate as admin for all tests
-_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+_login = client.post("/api/v1/auth/login", json={"username": "ami", "password": "ami43210"})
 assert _login.status_code == 200, f"Login failed: {_login.text}"
 AUTH = {"Authorization": f"Bearer {_login.json()['access_token']}"}
 
@@ -31,7 +31,7 @@ def _get(url: str, **kw):
     return client.get(url, headers=AUTH, **kw)
 
 def _post(url: str, **kw):
-    return _post(url, headers=AUTH, **kw)
+    return client.post(url, headers=AUTH, **kw)
 
 
 def _section(title: str) -> None:
@@ -55,7 +55,7 @@ def test_root():
     r = _get("/")
     _check("status 200", r.status_code == 200, str(r.status_code))
     body = r.json()
-    _check("has name", body.get("name") == "MAVERICKS PROJECT", str(body))
+    _check("has name", body.get("name") == "TRILOK TRACE", str(body))
     _check("has version", "version" in body, str(body))
     _check("has docs link", body.get("docs") == "/docs", str(body))
     _check("has api prefix", body.get("api") == "/api/v1", str(body))
@@ -70,7 +70,7 @@ def test_health():
     _check("status 200", r.status_code == 200, str(r.status_code))
     body = r.json()
     _check("status=ok", body.get("status") == "ok", str(body.get("status")))
-    _check("app name", body.get("app") == "MAVERICKS PROJECT")
+    _check("app name", body.get("app") == "TRILOK TRACE")
     _check("version", body.get("version") == "0.1.0")
 
     adapters = body.get("adapters", {})

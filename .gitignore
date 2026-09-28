@@ -41,3 +41,4 @@ Thumbs.db
 *.log
 logs/
 backend/data/
+.vercel

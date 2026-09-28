@@ -23,9 +23,19 @@ log = logging.getLogger(__name__)
 
 def _engine_kwargs() -> dict[str, Any]:
     """Connection arguments that differ between SQLite and PostgreSQL."""
-    if settings.is_sqlite:
+    target = settings.database_url or ""
+    if target.startswith("sqlite"):
         # check_same_thread=False: FastAPI serves requests from a threadpool.
-        return {"connect_args": {"check_same_thread": False}}
+        kwargs: dict[str, Any] = {"connect_args": {"check_same_thread": False}}
+        # 'sqlite://', 'sqlite:///' and 'sqlite:///:memory:' are all in-memory
+        # variants ('sqlite:///' resolves to a private per-connection temp DB,
+        # which silently breaks threading). Share one connection so the API's
+        # threadpool and the seeding path see the same schema and data.
+        if target in ("sqlite://", "sqlite:///:memory:") or target.rstrip("/") == "sqlite:":
+            from sqlalchemy.pool import StaticPool
+
+            kwargs["poolclass"] = StaticPool
+        return kwargs
     return {
         "pool_size": settings.db_pool_size,
         "max_overflow": settings.db_max_overflow,

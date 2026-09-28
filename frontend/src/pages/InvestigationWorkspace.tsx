@@ -84,7 +84,7 @@ export default function InvestigationWorkspace() {
 
   const handleStatusChange = async (code: string, action: "activate" | "pause" | "close") => {
     try {
-      const analyst = selected?.lead_analyst ?? "jmartinez";
+      const analyst = selected?.lead_analyst ?? "amra";
       let result: InvestigationDetail;
       if (action === "activate") result = await activateInvestigation(code, analyst);
       else if (action === "pause") result = await pauseInvestigation(code, analyst);
@@ -125,7 +125,7 @@ export default function InvestigationWorkspace() {
       await decideRelationship({
         relationship_id: rel.code,
         decision,
-        analyst: selected?.lead_analyst ?? "jmartinez",
+        analyst: selected?.lead_analyst ?? "amra",
         review_note: `${decision} by analyst review`,
       });
       // Refresh the detail

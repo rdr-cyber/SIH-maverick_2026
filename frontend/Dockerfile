@@ -1,5 +1,5 @@
 # ============================================================================
-# SHADOWGRAPH — Frontend Dockerfile
+# TRILOK TRACE — Frontend Dockerfile
 # Multi-stage: build (node) → serve (nginx)
 # ============================================================================
 
@@ -21,7 +21,7 @@ FROM nginx:alpine AS prod
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Custom nginx config: serve SPA + proxy /api to backend
-COPY nginx.conf /etc/nginx/conf.d/shadowgraph.conf
+COPY nginx.conf /etc/nginx/conf.d/trilok-trace.conf
 
 # Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html

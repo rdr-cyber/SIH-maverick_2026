@@ -20,7 +20,8 @@ class SourceOut(BaseModel):
     name: str
     kind: str
     access_method: str
-    reliability: int = Field(ge=0, le=100)
+    # trust_level per DATABASE.md §2 (was prototype `reliability`).
+    trust_level: int = Field(ge=0, le=100)
     last_scanned_at: Optional[datetime] = None
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Body, Query
+from fastapi import APIRouter, Depends, Body, HTTPException, Query
 from pydantic import BaseModel
 
 from app.api.auth import get_current_user, require_role
@@ -68,7 +68,7 @@ def get_investigation(session: DbSession, code: str) -> dict:
 
 
 @router.post("", status_code=201, summary="Create a new investigation",
-             dependencies=[Depends(require_role("admin", "senior_analyst"))])
+             dependencies=[Depends(require_role("analyst", "senior_analyst", "admin"))])
 def create_investigation(
     session: DbSession,
     body: CreateInvestigationRequest,
@@ -141,19 +141,26 @@ def add_note(session: DbSession, code: str, body: AddNoteRequest) -> dict:
 # Relationship decisions
 # ------------------------------------------------------------------
 
-@router.post("/decide", summary="Analyst decides on a relationship")
+@router.post("/decide", summary="Senior analyst decides on a relationship",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
 def decide(session: DbSession, body: DecideRelationshipRequest,
            user: CurrentUser = Depends(get_current_user)) -> dict:
+    """Review a relationship (accept/reject/uncertain).
+
+    RBAC (SECURITY.md §2): senior_analyst and admin only — analysts may not
+    decide correlation hypotheses.
+    """
     svc = InvestigationService(session)
     try:
-        return svc.decide_relationship(
+        result = svc.decide_relationship(
             relationship_id=body.relationship_id,
             decision=body.decision,
             analyst=body.analyst,
             review_note=body.review_note,
         )
+        return result
     except ValueError as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ------------------------------------------------------------------

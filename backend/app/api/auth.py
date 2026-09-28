@@ -1,9 +1,19 @@
-"""Authentication and authorization dependencies.
+"""Authentication and authorization dependencies — SECURITY.md §2.
 
 Provides:
-- get_current_user: extracts and validates JWT from Authorization header
-- require_role: enforces role-based access control
-- CurrentUser: typed dependency for the current authenticated user
+- get_current_user: extracts and validates the JWT access token
+- require_role: enforces the RBAC matrix via a FastAPI dependency
+- ANALYST_ROLES / SENIOR_ROLES / ADMIN_ONLY: role sets matching the matrix
+
+RBAC matrix (SECURITY.md §2):
+| capability                                    | analyst | senior | admin |
+|-----------------------------------------------|:-------:|:------:|:-----:|
+| Read intelligence, graph, timeline, reports   |   ✅    |   ✅   |  ✅   |
+| Create investigations, notes, targets         |   ✅    |   ✅   |  ✅   |
+| Review relationships (accept/reject/uncertain)|   –     |   ✅   |  ✅   |
+| Create actors/evidence manually               |   –     |   ✅   |  ✅   |
+| Trigger scans / RUN INVESTIGATION             |   –     |   ✅   |  ✅   |
+| Manage analysts, audit log, weights, resync   |   –     |   –    |  ✅   |
 """
 from __future__ import annotations
 
@@ -17,10 +27,15 @@ from app.core.security import decode_token
 
 _bearer = HTTPBearer(auto_error=False)
 
+ANALYST_ROLES = ("analyst", "senior_analyst", "admin")
+SENIOR_ROLES = ("senior_analyst", "admin")
+ADMIN_ONLY = ("admin",)
+
 
 @dataclass
 class CurrentUser:
     """Authenticated user context extracted from JWT."""
+
     username: str
     role: str
     user_id: str
@@ -58,14 +73,18 @@ def require_role(*allowed_roles: str):
     """Dependency factory that enforces role-based access control.
 
     Usage:
-        @router.get("/admin-only", dependencies=[Depends(require_role("admin"))])
-        def admin_endpoint(user: CurrentUser = Depends(get_current_user)): ...
+        @router.post("/review", dependencies=[Depends(require_role("senior_analyst", "admin"))])
+        def review(...): ...
     """
     async def _check(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{user.role}' is not authorized for this endpoint. Required: {', '.join(allowed_roles)}",
+                detail=(
+                    f"Role '{user.role}' is not authorized for this endpoint. "
+                    f"Required: {', '.join(allowed_roles)}"
+                ),
             )
         return user
+
     return _check

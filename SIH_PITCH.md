@@ -1,10 +1,10 @@
-# SIH Pitch — SHADOWGRAPH
+# SIH Pitch — TRILOK TRACE
 
 **Problem Statement 26151 · Dark Web Threat Actor De-anonymization · NTRO**
 **Theme:** Blockchain & Cybersecurity · Category: Software
 
 ## One-liner
-> SHADOWGRAPH connects clues across marketplaces, explains evidence with a living graph,
+> TRILOK TRACE connects clues across marketplaces, explains evidence with a living graph,
 > and gives investigators defensible — never overclaiming — attribution hypotheses.
 
 ## The problem

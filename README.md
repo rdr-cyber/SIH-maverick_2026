@@ -1,4 +1,6 @@
-# SHADOWGRAPH
+# TRILOK TRACE
+
+**Built by Team Mavericks**
 
 ### Explainable Dark Web Threat Intelligence & Actor Correlation Platform
 
@@ -7,12 +9,12 @@
 **Problem Statement ID:** 26151 · **Theme:** Blockchain & Cybersecurity
 **Organization:** National Technical Research Organisation (NTRO)
 
-SHADOWGRAPH helps authorized investigators correlate publicly available, authorized, and
+TRILOK TRACE helps authorized investigators correlate publicly available, authorized, and
 **synthetic** intelligence about threat-actor personas — handles, PGP fingerprints, wallets,
 marketplace/forum identities, posts, domains, infrastructure and TLS metadata, stylometry,
 and behavior — and produces **evidence-backed attribution hypotheses with transparent reasoning**.
 
-> ⚠️ **Safety & Ethics by design.** SHADOWGRAPH is a *defensive* intelligence prototype.
+> ⚠️ **Safety & Ethics by design.** TRILOK TRACE is a *defensive* intelligence prototype.
 > It never touches real systems, Tor, or real individuals. The entire demo runs on a
 > deterministic synthetic ecosystem so it works fully offline. Inferred relationships are
 > always labeled as hypotheses, never as proven identities, and every inference requires

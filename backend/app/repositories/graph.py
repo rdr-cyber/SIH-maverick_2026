@@ -131,8 +131,18 @@ class GraphRepository:
                 label, i.normalized_value,
             )
 
-        # Load relationships
-        rels = self.session.execute(select(Relationship)).scalars().all()
+        # Load relationships. Deterministic order + curated-code preference:
+        # the ingestion pipeline can mint a second POSSIBLY_SAME_AS row for the
+        # same actor pair (hash-coded INGESTED:* codes, see ingestion.py).
+        # upsert_edge keeps the LAST writer per (source, kind, target), so order
+        # non-REL codes first and curated REL-* last — the WHY? panel must show
+        # the curated relationship, never depend on row iteration order.
+        rels = self.session.execute(
+            select(Relationship).order_by(
+                Relationship.code.startswith("REL-"),
+                Relationship.code,
+            )
+        ).scalars().all()
         for r in rels:
             from_actor = actors.get(r.from_id)
             to_actor = actors.get(r.to_id)
@@ -152,6 +162,8 @@ class GraphRepository:
                     postgres_uuid=r.id,
                 )
                 # Edge: Actor → POSSIBLY_SAME_AS → Actor
+                # Inference-edge payload per API.md §6 / GRAPH_MODEL.md §3:
+                # {confidence, band, status, evidence_ids, explanation, ...}
                 self.graph.upsert_edge(
                     "ACTOR", from_actor.code, r.kind,
                     "ACTOR", to_actor.code,
@@ -159,6 +171,11 @@ class GraphRepository:
                         "confidence": r.confidence,
                         "band": r.band,
                         "status": r.status,
+                        "code": r.code,
+                        "evidence_ids": r.evidence_ids or [],
+                        "explanation": r.explanation or "",
+                        "scoring_factors": r.scoring_factors or [],
+                        "hypothesis_label": r.hypothesis_label or "",
                         "relationship_code": r.code,
                     },
                 )
@@ -256,6 +273,10 @@ class GraphRepository:
 
         source_id and target_id are in 'LABEL:pgkey' format.
         """
+        # Always rebuild from relational data — this request may not be preceded
+        # by a GET /graph call, so the in-memory graph can't be assumed populated.
+        self.rebuild_graph()
+
         # Extract the relationship code from the edge properties
         edges = []
         for fk, rt, tk, props in self.graph._edges:
@@ -264,7 +285,9 @@ class GraphRepository:
             if fk_str == source_id and tk_str == target_id:
                 edges.append({"rel_type": rt, **props})
 
-        # If this is a POSSIBLY_SAME_AS edge, find the relationship and its evidence
+        # If this is a POSSIBLY_SAME_AS edge, find the relationship and its evidence.
+        # Returns the full WHY payload: relationship inference metadata (band, status,
+        # scoring factors, explanation) plus the evidence chain — GRAPH_MODEL.md §3.
         for edge in edges:
             rel_code = edge.get("relationship_code")
             if rel_code:
@@ -275,16 +298,33 @@ class GraphRepository:
                     evidence = self.session.execute(
                         select(Evidence).where(Evidence.relationship_id == rel.id)
                     ).scalars().all()
-                    return [
-                        {
-                            "code": e.code,
-                            "kind": e.kind,
-                            "title": e.title,
-                            "description": e.description,
-                            "strength": e.strength,
-                            "evidence_class": e.evidence_class,
-                            "score_contribution": e.score_contribution,
-                        }
-                        for e in evidence
-                    ]
-        return []
+                    return {
+                        "relationship": {
+                            "code": rel.code,
+                            "kind": rel.kind,
+                            "confidence": rel.confidence,
+                            "band": rel.band,
+                            "status": rel.status,
+                            "hypothesis_label": rel.hypothesis_label or "",
+                            "explanation": rel.explanation or "",
+                            "scoring_factors": rel.scoring_factors or [],
+                            "evidence_ids": rel.evidence_ids or [],
+                            "ruled_out_summary": rel.ruled_out_summary or "",
+                            "from_code": edge.get("source", "").split(":", 1)[-1],
+                            "to_code": edge.get("target", "").split(":", 1)[-1],
+                        },
+                        "evidence": [
+                            {
+                                "id": str(e.id),
+                                "code": e.code,
+                                "kind": e.kind,
+                                "title": e.title,
+                                "description": e.description,
+                                "strength": e.strength,
+                                "evidence_class": e.evidence_class,
+                                "score_contribution": e.score_contribution,
+                            }
+                            for e in evidence
+                        ],
+                    }
+        return {"relationship": None, "evidence": []}

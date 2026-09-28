@@ -25,6 +25,27 @@ from .catalog import ACTORS, ANALYSTS, EVIDENCE, INVESTIGATIONS, RELATIONSHIPS, 
 
 log = logging.getLogger(__name__)
 
+# --- MAP-VIEW: synthetic geolocation per actor --------------------------------
+# Fictional demo coordinates for the map view. Values are invented for the
+# synthetic catalogue (never real persons or addresses); ``label`` is a
+# plausible city-level attribution shown as the pin tooltip. Roles cover the
+# investigation vocabulary: victim / suspect / witness / person_of_interest.
+ACTOR_GEO: dict[str, dict[str, Any]] = {
+    "darkmerchant":   {"role": "suspect",           "lat": 51.5072,  "lng": -0.1276,  "label": "London, UK"},
+    "shadow_vendor":  {"role": "suspect",           "lat": 48.8566,  "lng": 2.3522,   "label": "Paris, FR"},
+    "crimson_ledger": {"role": "suspect",           "lat": 40.7128,  "lng": -74.0060, "label": "New York, US"},
+    "launderpipe":    {"role": "suspect",           "lat": 25.2048,  "lng": 55.2708,  "label": "Dubai, AE"},
+    "quietsteel":     {"role": "suspect",           "lat": 41.0082,  "lng": 28.9784,  "label": "Istanbul, TR"},
+    "iron_broker":    {"role": "person_of_interest", "lat": 45.4642,  "lng": 9.1900,   "label": "Milan, IT"},
+    "pharmakon":      {"role": "suspect",           "lat": 52.5200,  "lng": 13.4050,  "label": "Berlin, DE"},
+    "veil_courier":   {"role": "suspect",           "lat": 50.1109,  "lng": 8.6821,   "label": "Frankfurt, DE"},
+    "ghostloader":    {"role": "suspect",           "lat": 1.3521,   "lng": 103.8198, "label": "Singapore, SG"},
+    "nullbyte_9":     {"role": "witness",           "lat": 19.0760,  "lng": 72.8777,  "label": "Mumbai, IN"},
+    "redsparrow":     {"role": "person_of_interest", "lat": 37.5665,  "lng": 126.9780, "label": "Seoul, KR"},
+    "terra_fund":     {"role": "suspect",           "lat": 14.5995,  "lng": 120.9842, "label": "Manila, PH"},
+    "bazaar_ops":     {"role": "victim",            "lat": -33.8688, "lng": 151.2093, "label": "Sydney, AU"},
+}
+
 
 def _dt(value: Optional[str]) -> Optional[datetime]:
     """Parse an ISO date or datetime string into naive UTC."""
@@ -43,7 +64,7 @@ def _upsert_sources(session: Session) -> dict[str, Source]:
             session.add(row)
             existing[spec["name"]] = row
         row.kind = spec["kind"]
-        row.reliability = spec["reliability"]
+        row.trust_level = spec["reliability"]
         row.description = spec.get("description")
         row.access_method = spec.get("access_method", "synthetic")
         row.enabled = True
@@ -153,6 +174,13 @@ def seed_database(*, reset: bool = False, session: Optional[Session] = None) -> 
             actor.first_seen = _dt(spec.get("first_seen"))
             actor.last_seen = _dt(spec.get("last_seen"))
             actor.last_scan_at = _dt(spec.get("last_scan_at"))
+            # MAP-VIEW: synthetic role + geolocation for the map endpoint
+            geo = ACTOR_GEO.get(spec["code"])
+            if geo:
+                actor.investigation_role = geo["role"]
+                actor.geo_lat = geo["lat"]
+                actor.geo_lng = geo["lng"]
+                actor.geo_label = geo["label"]
             primary = sources.get(spec.get("primary_source", ""))
             actor.primary_source_id = primary.id if primary else None
             db.flush()
@@ -323,7 +351,7 @@ def _main() -> None:
     from app.core.database import init_db
     from app.core.logging import configure_logging
 
-    parser = argparse.ArgumentParser(description="Load the SHADOWGRAPH synthetic catalogue.")
+    parser = argparse.ArgumentParser(description="Load the TRILOK TRACE synthetic catalogue.")
     parser.add_argument(
         "--reset", action="store_true", help="drop and recreate all tables before seeding"
     )

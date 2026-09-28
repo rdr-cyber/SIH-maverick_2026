@@ -1,5 +1,5 @@
 // ============================================================================
-// SHADOWGRAPH — Neo4j canonical schema (Phase 1 artifact)
+// TRILOK TRACE — Neo4j canonical schema (Phase 1 artifact)
 // Problem Statement ID 26151 · NTRO · SIH 2026
 // Idempotent: safe to run on every container start (neo4j-init service).
 // Mirrors: GRAPH_MODEL.md

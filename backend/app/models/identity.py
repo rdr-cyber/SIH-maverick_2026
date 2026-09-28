@@ -20,19 +20,20 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import (
-    JSON,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, IDMixin, StampMixin
+from .base import Base, GUID, IDMixin, JSONBVariant, StampMixin
 
 # Controlled vocabularies. Kept as tuples so schemas and the seed agree.
 SOURCE_KINDS = ("marketplace", "forum", "paste_site", "certificate_archive",
@@ -47,17 +48,32 @@ IDENTIFIER_KINDS = ("handle", "alias", "pgp_key", "wallet", "email",
 
 
 class Source(Base, IDMixin, StampMixin):
-    """Provenance root. Every artifact traces back to exactly one source."""
+    """Provenance root. Every artifact traces back to exactly one source.
+
+    DATABASE.md §2: ``access_method`` must be synthetic|authorized|public —
+    the ingestion connector boundary refuses anything else (enforced again in
+    ``app/ingestion/boundary.py``).
+    """
 
     __tablename__ = "sources"
 
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     access_method: Mapped[str] = mapped_column(String(40), nullable=False, default="synthetic")
-    reliability: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    trust_level: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
     description: Mapped[Optional[str]] = mapped_column(Text)
     last_scanned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    __table_args__ = (
+        CheckConstraint(
+            "access_method IN ('synthetic', 'authorized', 'public')",
+            name="ck_sources_access_method",
+        ),
+        CheckConstraint(
+            "trust_level BETWEEN 0 AND 100", name="ck_sources_trust_level"
+        ),
+    )
 
 
 class Actor(Base, IDMixin, StampMixin):
@@ -67,19 +83,38 @@ class Actor(Base, IDMixin, StampMixin):
 
     code: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(160), nullable=False)
-    summary: Mapped[Optional[str]] = mapped_column(Text)
+    # Canonical column name is `notes` (DATABASE.md §3); API keeps exposing `summary`.
+    summary: Mapped[Optional[str]] = mapped_column("notes", Text)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="tracked")
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False, default="moderate")
     category: Mapped[str] = mapped_column(String(40), nullable=False, default="other")
 
+    # MAP-VIEW: investigation role (victim / suspect / witness / person_of_interest /
+    # other) and optional last-known geolocation. NULL role means "no role assigned";
+    # NULL geo means "not geolocated" — the map hides such actors.
+    investigation_role: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    geo_lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    geo_lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    geo_label: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
+
     # 0-100 heuristic. NOT a probability that two personas are one human.
     attribution_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
-    primary_source_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("sources.id", ondelete="SET NULL")
-    )
+    # Column name is `attributes` in this deployment (flagged drift vs DDL `metadata`)
+    # because the prototype API, seed, and frontend already speak `attributes`.
     attributes: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+    # Persona-merge workflow (soft-delete via status='merged_into').
+    merged_into_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("actors.id", ondelete="SET NULL")
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(GUID())
+
+    # Canonical column name is `source_id` (DATABASE.md §3 actors).
+    primary_source_id: Mapped[Optional[str]] = mapped_column(
+        "source_id", ForeignKey("sources.id", ondelete="SET NULL")
+    )
 
     first_seen: Mapped[Optional[datetime]] = mapped_column(DateTime)
     last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -100,6 +135,7 @@ class Actor(Base, IDMixin, StampMixin):
     __table_args__ = (
         Index("ix_actors_risk_category", "risk_level", "category"),
         Index("ix_actors_last_scan", "last_scan_at"),
+        Index("idx_actors_status", "status"),
     )
 
 

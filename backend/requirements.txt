@@ -6,7 +6,12 @@ pydantic>=2.6
 pydantic-settings>=2.2
 
 # database
-psycopg2-binary>=2.9
+# psycopg 3 (binary) — matches the postgresql+psycopg:// URLs in compose/.env.example
+psycopg[binary]>=3.1
+# migrations (DATABASE.md §14: alembic, single-head chain)
+alembic>=1.13
+# local-mode async parity layer (APP_MODE=local async engine)
+aiosqlite>=0.19
 
 # PDF export
 fpdf2>=2.8

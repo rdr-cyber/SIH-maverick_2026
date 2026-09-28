@@ -1,4 +1,4 @@
-"""Synthetic ingestion fixtures for SHADOWGRAPH.
+"""Synthetic ingestion fixtures for TRILOK TRACE.
 
 Every fixture is FABRICATED for demonstration. No real criminal data.
 Fixtures are deterministic and idempotent — re-running produces the same results.

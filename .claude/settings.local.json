@@ -4,7 +4,7 @@
       "Bash(docker --version)",
       "Bash(git --version)",
       "Bash(python -c ' *)",
-      "Bash(rm -f data/shadowgraph.db*)"
+      "Bash(rm -f data/trilok_trace.db*)"
     ]
   }
 }

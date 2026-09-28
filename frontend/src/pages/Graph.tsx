@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import cytoscape from "cytoscape";
-import { fetchGraph, fetchEdgeEvidence } from "@/api/graph";
-import type { EdgeEvidence, GraphData } from "@/api/graph";
+import { fetchGraph, fetchEdgeWhy } from "@/api/graph";
+import type {
+  EdgeEvidence,
+  EdgeWhyPayload,
+  GraphData,
+  RelationshipMeta,
+} from "@/api/graph";
 import { Loading } from "@/components/Loading";
 import { ErrorState } from "@/components/ErrorState";
 import { RiskBadge } from "@/components/RiskBadge";
@@ -28,13 +33,37 @@ const NODE_SHAPES: Record<string, string> = {
   persona: "rectangle",
 };
 
+/** Observed-fact edge colors. Inference edges (POSSIBLY_SAME_AS) use band colors. */
 const EDGE_COLORS: Record<string, string> = {
-  POSSIBLY_SAME_AS: "#ef4444",
   HAS_EVIDENCE: "#22c55e",
   USES: "#6b7280",
   HAS: "#8b5cf6",
   APPEARS_ON: "#3b82f6",
 };
+
+/**
+ * Confidence-band visual encoding (GRAPH_MODEL.md §3: 0–100 score → band).
+ * Color AND line weight scale with band; `medium` is accepted as a legacy
+ * alias of `moderate` (the seed catalog uses it).
+ */
+const BAND_STYLE: Record<string, { color: string; width: number; label: string }> = {
+  weak: { color: "#64748b", width: 1.5, label: "WEAK" },
+  low: { color: "#f59e0b", width: 2, label: "LOW" },
+  moderate: { color: "#f97316", width: 2.5, label: "MODERATE" },
+  medium: { color: "#f97316", width: 2.5, label: "MODERATE" },
+  high: { color: "#22c55e", width: 3.5, label: "HIGH" },
+  very_high: { color: "#059669", width: 5, label: "VERY HIGH" },
+};
+
+/** Human-in-the-loop review status, visible at a glance on the edge label. */
+const STATUS_GLYPHS: Record<string, string> = {
+  pending: "…",
+  accepted: "✓",
+  rejected: "✗",
+  uncertain: "?",
+};
+
+const BAND_KEYS = ["weak", "low", "moderate", "high", "very_high"] as const;
 
 const GROUP_FILTERS = [
   "actor",
@@ -47,6 +76,228 @@ const GROUP_FILTERS = [
   "evidence",
 ];
 
+interface WhyState {
+  label: string;
+  loading: boolean;
+  error: string | null;
+  data: EdgeWhyPayload | null;
+}
+
+const IDLE_WHY: WhyState = { label: "", loading: false, error: null, data: null };
+
+function bandStyle(band: unknown) {
+  const key = typeof band === "string" ? band : "low";
+  return BAND_STYLE[key] ?? BAND_STYLE.low;
+}
+
+function shortId(id: unknown): string {
+  const s = typeof id === "string" ? id : "";
+  return s.split(":", 2)[1] ?? s;
+}
+
+/** Small entity swatch matching the cytoscape shape/color encoding. */
+function EntitySwatch({ group }: { group: string }) {
+  const color = NODE_COLORS[group] ?? "#6b7280";
+  const shape = NODE_SHAPES[group] ?? "ellipse";
+  if (shape === "diamond")
+    return <span className="inline-block h-2 w-2 rotate-45" style={{ backgroundColor: color }} />;
+  if (shape === "hexagon")
+    return (
+      <span
+        className="inline-block h-2 w-2.5"
+        style={{
+          backgroundColor: color,
+          clipPath: "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)",
+        }}
+      />
+    );
+  if (shape === "rectangle")
+    return <span className="inline-block h-2 w-3" style={{ backgroundColor: color }} />;
+  if (shape === "round-rectangle")
+    return <span className="inline-block h-2 w-3 rounded-[2px]" style={{ backgroundColor: color }} />;
+  return <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />;
+}
+
+function Legend() {
+  return (
+    <div className="mp-panel flex flex-col gap-1.5 p-3">
+      {/* Entity shape + color legend (APEX LINK principle: encoding must be readable) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-[10px] uppercase tracking-wide text-slate-600">Entities</span>
+        {Object.keys(NODE_COLORS).map((g) => (
+          <span key={g} className="flex items-center gap-1 text-[10px] text-slate-500">
+            <EntitySwatch group={g} />
+            {g}
+          </span>
+        ))}
+      </div>
+      {/* Edge encoding legend: fact vs hypothesis, band scale, review status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-[10px] uppercase tracking-wide text-slate-600">Edges</span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="inline-block w-4 border-t-2 border-slate-400" /> observed fact
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="inline-block w-4 border-t-2 border-dashed border-slate-400" /> inferred hypothesis
+        </span>
+        {BAND_KEYS.map((b) => (
+          <span key={b} className="flex items-center gap-1 text-[10px]" style={{ color: BAND_STYLE[b].color }}>
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: BAND_STYLE[b].color }} />
+            {BAND_STYLE[b].label}
+          </span>
+        ))}
+        {Object.entries(STATUS_GLYPHS).map(([s, glyph]) => (
+          <span key={s} className="text-[10px] text-slate-500">
+            {glyph} {s}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const glyph = STATUS_GLYPHS[status] ?? "";
+  const tone =
+    status === "accepted"
+      ? "border-emerald-500/40 text-emerald-400"
+      : status === "rejected"
+        ? "border-red-500/40 text-red-400"
+        : "border-amber-500/40 text-amber-400";
+  return (
+    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${tone}`}>
+      {glyph} {status}
+    </span>
+  );
+}
+
+function EvidenceCard({ ev }: { ev: EdgeEvidence }) {
+  return (
+    <div className="rounded border border-line bg-panel2 p-2">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs font-medium text-slate-300">{ev.title}</span>
+        <span className="shrink-0 font-mono text-xs text-teal-400">+{ev.score_contribution}</span>
+      </div>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{ev.description}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <RiskBadge value={ev.evidence_class} variant="status" />
+        <span className="text-[10px] text-slate-600">{ev.strength}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Full WHY? breakdown for an inference edge (GRAPH_MODEL.md §3: hypothesis, not verdict). */
+function RelationshipWhy({ rel, evidence }: { rel: RelationshipMeta; evidence: EdgeEvidence[] }) {
+  const band = bandStyle(rel.band);
+  const conf = typeof rel.confidence === "number" ? rel.confidence : Number(rel.confidence) || 0;
+  const factors = rel.scoring_factors ?? [];
+  return (
+    <div className="mt-3 space-y-4">
+      {rel.hypothesis_label && (
+        <p className="border-l-2 border-slate-700 pl-2 text-xs italic leading-relaxed text-slate-300">
+          “{rel.hypothesis_label}”
+        </p>
+      )}
+
+      {/* Confidence + band */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-[10px] uppercase tracking-wide text-slate-500">Confidence</span>
+          <span className="font-mono text-sm text-teal-400">
+            {conf.toFixed(1)}
+            <span className="ml-1 text-[10px] text-slate-500">/100 · {band.label}</span>
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded bg-slate-800">
+          <div
+            className="h-full rounded"
+            style={{ width: `${Math.min(100, Math.max(0, conf))}%`, backgroundColor: band.color }}
+          />
+        </div>
+      </div>
+
+      {/* Explanation */}
+      {rel.explanation && (
+        <div>
+          <h4 className="text-[10px] uppercase tracking-wide text-slate-500">Explanation</h4>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">{rel.explanation}</p>
+        </div>
+      )}
+
+      {/* Scoring factors: signal / weight / score / note */}
+      {factors.length > 0 && (
+        <div>
+          <h4 className="text-[10px] uppercase tracking-wide text-slate-500">Scoring factors</h4>
+          <table className="mt-1 w-full text-[11px]">
+            <thead>
+              <tr className="text-left text-[10px] text-slate-600">
+                <th className="pb-1 font-medium">Signal</th>
+                <th className="pb-1 text-right font-medium">Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {factors.map((f, i) => (
+                <tr key={`${f.signal}-${i}`} className="border-t border-line/60 align-top">
+                  <td className="py-1 pr-2">
+                    <span className="font-mono text-slate-300">{f.signal}</span>
+                    <span className="ml-1 text-[10px] text-slate-600">×{f.weight}</span>
+                    {f.note && <p className="text-[10px] leading-snug text-slate-500">{f.note}</p>}
+                  </td>
+                  <td className="py-1 text-right font-mono text-teal-400">+{f.score}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Evidence chain */}
+      <div>
+        <h4 className="text-[10px] uppercase tracking-wide text-slate-500">
+          Evidence chain ({evidence.length})
+        </h4>
+        {evidence.length === 0 ? (
+          <p className="mt-1 text-[11px] text-slate-600">No evidence items linked to this relationship.</p>
+        ) : (
+          <div className="mt-1 space-y-2">
+            {evidence.map((ev) => (
+              <EvidenceCard key={ev.code} ev={ev} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Ruled out */}
+      {rel.ruled_out_summary && (
+        <div>
+          <h4 className="text-[10px] uppercase tracking-wide text-slate-500">Ruled out</h4>
+          <p className="mt-1 text-[11px] italic leading-relaxed text-slate-500">{rel.ruled_out_summary}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Observed-fact edges carry no inference scoring — say so explicitly. */
+function ObservedEdgeNote({ evidence }: { evidence: EdgeEvidence[] }) {
+  return (
+    <div className="mt-3 space-y-3">
+      <p className="text-xs leading-relaxed text-slate-400">
+        Observed fact — recorded directly from source data, not an inference. No scoring factors
+        apply.
+      </p>
+      {evidence.length > 0 && (
+        <div className="space-y-2">
+          {evidence.map((ev) => (
+            <EvidenceCard key={ev.code} ev={ev} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Graph() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -54,8 +305,7 @@ export default function Graph() {
   const [error, setError] = useState<string | null>(null);
   const [focus, setFocus] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedEdge, setSelectedEdge] = useState<EdgeEvidence[] | null>(null);
-  const [selectedLabel, setSelectedLabel] = useState<string>("");
+  const [why, setWhy] = useState<WhyState>(IDLE_WHY);
   const [activeGroups, setActiveGroups] = useState<Set<string>>(
     new Set(GROUP_FILTERS),
   );
@@ -63,7 +313,7 @@ export default function Graph() {
   const loadGraph = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setSelectedEdge(null);
+    setWhy(IDLE_WHY);
     try {
       const data = await fetchGraph({
         focus: focus || undefined,
@@ -121,23 +371,47 @@ export default function Graph() {
         {
           selector: "edge",
           style: {
-            width: (_el: cytoscape.EdgeSingular) => {
-              const rt = _el.data("rel_type") as string;
-              return rt === "POSSIBLY_SAME_AS" ? 3 : 1;
+            // Band → line weight (inference edges only; observed facts stay thin)
+            width: (el: cytoscape.EdgeSingular) => {
+              return (el.data("rel_type") as string) === "POSSIBLY_SAME_AS"
+                ? bandStyle(el.data("band")).width
+                : 1;
             },
-            "line-color": (_el: cytoscape.EdgeSingular) => {
-              const rt = _el.data("rel_type") as string;
-              return EDGE_COLORS[rt] ?? "#374151";
+            // Band → color for hypotheses; rel_type color for observed facts
+            "line-color": (el: cytoscape.EdgeSingular) => {
+              const rt = el.data("rel_type") as string;
+              return rt === "POSSIBLY_SAME_AS"
+                ? bandStyle(el.data("band")).color
+                : EDGE_COLORS[rt] ?? "#374151";
             },
-            "target-arrow-color": "#374151",
+            "target-arrow-color": (el: cytoscape.EdgeSingular) => {
+              const rt = el.data("rel_type") as string;
+              return rt === "POSSIBLY_SAME_AS"
+                ? bandStyle(el.data("band")).color
+                : EDGE_COLORS[rt] ?? "#374151";
+            },
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
-            label: (_el: cytoscape.EdgeSingular) => {
-              const rt = _el.data("rel_type") as string;
-              return rt === "POSSIBLY_SAME_AS" ? `RCS ${_el.data("confidence") ?? ""}` : "";
+            // Hypothesis vs fact: dashed = inference, solid = observed
+            "line-style": (el: cytoscape.EdgeSingular) => {
+              return (((el.data("rel_type") as string) === "POSSIBLY_SAME_AS"
+                ? "dashed"
+                : "solid") as cytoscape.Css.LineStyle);
+            },
+            // Review status at a glance: rejected fades, uncertain dims
+            opacity: (el: cytoscape.EdgeSingular) => {
+              const status = el.data("status") as string | undefined;
+              if (status === "rejected") return 0.35;
+              if (status === "uncertain") return 0.7;
+              return 1;
+            },
+            label: (el: cytoscape.EdgeSingular) => {
+              if ((el.data("rel_type") as string) !== "POSSIBLY_SAME_AS") return "";
+              const glyph = STATUS_GLYPHS[(el.data("status") as string) ?? ""] ?? "";
+              return `${glyph} ${el.data("confidence") ?? ""}`.trim();
             },
             "font-size": "9px",
-            color: "#9ca3af",
+            color: "#cbd5e1",
             "text-background-color": "#090c10",
             "text-background-opacity": 0.8,
             "text-background-padding": "2px",
@@ -176,23 +450,24 @@ export default function Graph() {
       boxSelectionEnabled: false,
     });
 
-    // Edge click → show evidence
+    // Edge click → WHY? panel (relationship inference + evidence chain)
     cy.on("tap", "edge", async (evt) => {
       const edge = evt.target;
       const source = edge.data("source") as string;
       const target = edge.data("target") as string;
       const relType = edge.data("rel_type") as string;
-      setSelectedLabel(`${relType}: ${source} → ${target}`);
-
-      if (relType === "POSSIBLY_SAME_AS") {
-        try {
-          const evidence = await fetchEdgeEvidence(source, target);
-          setSelectedEdge(evidence);
-        } catch {
-          setSelectedEdge([]);
-        }
-      } else {
-        setSelectedEdge(null);
+      const label = `${relType}: ${shortId(source)} → ${shortId(target)}`;
+      setWhy({ label, loading: true, error: null, data: null });
+      try {
+        const payload = await fetchEdgeWhy(source, target);
+        setWhy({ label, loading: false, error: null, data: payload });
+      } catch (e: unknown) {
+        setWhy({
+          label,
+          loading: false,
+          error: e instanceof Error ? e.message : "Failed to load edge details",
+          data: null,
+        });
       }
     });
 
@@ -203,18 +478,21 @@ export default function Graph() {
       if (group === "actor") {
         setFocus(node.data("pgkey") as string);
       }
-      setSelectedEdge(null);
+      setWhy(IDLE_WHY);
     });
 
     // Background click → clear selection
     cy.on("tap", (evt) => {
       if (evt.target === cy) {
-        setSelectedEdge(null);
-        setSelectedLabel("");
+        setWhy(IDLE_WHY);
       }
     });
 
     cyRef.current = cy;
+    // Dev-only handle for debugging/testing the canvas-rendered graph.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __cy?: cytoscape.Core }).__cy = cy;
+    }
   };
 
   // Apply group filter
@@ -308,7 +586,10 @@ export default function Graph() {
         )}
       </div>
 
-      {/* Graph + Evidence panel */}
+      {/* Legend */}
+      <Legend />
+
+      {/* Graph + WHY? panel */}
       <div className="flex flex-1 gap-3 overflow-hidden">
         {/* Graph container */}
         <div className="mp-panel relative flex-1 overflow-hidden">
@@ -325,40 +606,30 @@ export default function Graph() {
           <div ref={containerRef} className="h-full w-full" />
         </div>
 
-        {/* Evidence panel */}
-        {selectedEdge && (
-          <div className="w-80 shrink-0 overflow-y-auto">
+        {/* WHY? panel */}
+        {why.label && (
+          <div className="w-96 shrink-0 overflow-y-auto">
             <div className="mp-panel p-4">
-              <h3 className="mb-2 text-sm font-medium text-slate-300">Edge Evidence</h3>
-              <p className="mb-3 text-xs text-slate-500">{selectedLabel}</p>
-              {selectedEdge.length === 0 ? (
-                <p className="text-xs text-slate-600">No evidence items for this edge.</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedEdge.map((ev) => (
-                    <div
-                      key={ev.code}
-                      className="rounded border border-line bg-panel2 p-2"
-                    >
-                      <div className="flex items-start justify-between">
-                        <span className="text-xs font-medium text-slate-300">
-                          {ev.title}
-                        </span>
-                        <span className="font-mono text-xs text-teal-400">
-                          +{ev.score_contribution}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        {ev.description}
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <RiskBadge value={ev.evidence_class} variant="status" />
-                        <span className="text-[10px] text-slate-600">{ev.strength}</span>
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-200">WHY?</h3>
+                {why.data?.relationship && <StatusBadge status={why.data.relationship.status} />}
+              </div>
+              <p className="mt-0.5 font-mono text-[11px] text-slate-500">{why.label}</p>
+              {why.loading && (
+                <div className="mt-3">
+                  <Loading label="Loading edge detail…" />
                 </div>
               )}
+              {why.error && <p className="mt-3 text-xs text-red-400">{why.error}</p>}
+              {why.data &&
+                (why.data.relationship ? (
+                  <RelationshipWhy
+                    rel={why.data.relationship}
+                    evidence={why.data.evidence}
+                  />
+                ) : (
+                  <ObservedEdgeNote evidence={why.data.evidence} />
+                ))}
             </div>
           </div>
         )}

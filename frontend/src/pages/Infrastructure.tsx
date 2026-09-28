@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { fetchActors } from "@/api/client";
+import { authHeaders } from "@/api/auth";
 
 const BASE = "/api/v1";
 
@@ -62,8 +63,8 @@ export default function Infrastructure() {
       qs.set("limit", "100");
 
       const [infraRes, clusterRes] = await Promise.all([
-        fetch(`${BASE}/infrastructure?${qs}`),
-        fetch(`${BASE}/infrastructure/clusters`),
+        fetch(`${BASE}/infrastructure?${qs}`, { headers: authHeaders() }),
+        fetch(`${BASE}/infrastructure/clusters`, { headers: authHeaders() }),
       ]);
 
       if (!infraRes.ok) throw new Error(`Infrastructure fetch failed: ${infraRes.status}`);

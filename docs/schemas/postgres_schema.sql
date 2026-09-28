@@ -1,5 +1,5 @@
 -- ============================================================================
--- SHADOWGRAPH — PostgreSQL canonical schema (Phase 1 artifact)
+-- TRILOK TRACE — PostgreSQL canonical schema (Phase 1 artifact)
 -- Problem Statement ID 26151 · NTRO · SIH 2026
 -- System of record for all intelligence facts, evidence, and review state.
 -- Mirrors: DATABASE.md · Consumed by: SQLAlchemy models (Phase 2)

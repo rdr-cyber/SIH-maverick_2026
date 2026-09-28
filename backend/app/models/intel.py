@@ -25,7 +25,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, IDMixin, StampMixin
+from .base import Base, GUID, IDMixin, JSONBVariant, StampMixin
 
 # Controlled vocabularies
 RELATIONSHIP_KINDS = (
@@ -90,21 +90,26 @@ class Relationship(Base, IDMixin, StampMixin):
     # from_id/to_id are the UUIDs.  This avoids FK circular references
     # while keeping the graph traversable.
     from_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    from_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    from_id: Mapped[str] = mapped_column(GUID(), nullable=False)
     to_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    to_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    to_id: Mapped[str] = mapped_column(GUID(), nullable=False)
 
     # Scoring
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     band: Mapped[str] = mapped_column(String(20), nullable=False, default="weak")
-    scoring_factors: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=list)
+    scoring_factors: Mapped[dict[str, Any]] = mapped_column(
+        JSONBVariant, nullable=False, default=list
+    )
     explanation: Mapped[Optional[str]] = mapped_column(Text)
     hypothesis_label: Mapped[Optional[str]] = mapped_column(String(200))
+    # UUID[] in the DDL; JSON array keeps SQLite parity (flagged drift).
+    evidence_ids: Mapped[list[Any]] = mapped_column(JSONBVariant, nullable=False, default=list)
+    ruled_out_summary: Mapped[Optional[str]] = mapped_column(Text)
 
     # Review workflow
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    created_by: Mapped[Optional[str]] = mapped_column(String(36))
-    reviewed_by: Mapped[Optional[str]] = mapped_column(String(36))
+    created_by: Mapped[Optional[str]] = mapped_column(GUID())
+    reviewed_by: Mapped[Optional[str]] = mapped_column(GUID())
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     review_note: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -155,7 +160,10 @@ class Evidence(Base, IDMixin, StampMixin):
     )
 
     # Supporting details
-    details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    observation_ids: Mapped[list[Any]] = mapped_column(
+        JSONBVariant, nullable=False, default=list
+    )  # UUID[] in the DDL; JSON array keeps SQLite parity (flagged drift).
+    details: Mapped[dict[str, Any]] = mapped_column(JSONBVariant, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="valid")
 
     __table_args__ = (
@@ -181,7 +189,7 @@ class TimelineEvent(Base, IDMixin):
         ForeignKey("actors.id", ondelete="SET NULL")
     )
     entity_type: Mapped[Optional[str]] = mapped_column(String(40))
-    entity_id: Mapped[Optional[str]] = mapped_column(String(36))
+    entity_id: Mapped[Optional[str]] = mapped_column(GUID())
 
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     detail: Mapped[Optional[str]] = mapped_column(Text)

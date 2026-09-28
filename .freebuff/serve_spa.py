@@ -1,4 +1,4 @@
-"""Minimal SPA static file server for SHADOWGRAPH preview."""
+"""Minimal SPA static file server for TRILOK TRACE preview."""
 import http.server
 import os
 import sys
@@ -24,5 +24,5 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     with http.server.HTTPServer(("127.0.0.1", PORT), SPAHandler) as httpd:
-        print(f"Serving SHADOWGRAPH on http://127.0.0.1:{PORT}")
+        print(f"Serving TRILOK TRACE on http://127.0.0.1:{PORT}")
         httpd.serve_forever()

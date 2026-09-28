@@ -393,7 +393,7 @@ class ReportService:
             {
                 "name": s.name,
                 "kind": s.kind,
-                "reliability": s.reliability,
+                "trust_level": s.trust_level,
                 "last_scanned_at": s.last_scanned_at.isoformat() if s.last_scanned_at else None,
             }
             for s in sources
@@ -514,7 +514,7 @@ def export_csv(report: dict[str, Any]) -> str:
     writer.writerow(["SECTION", "Sources"])
     writer.writerow(["Name", "Kind", "Reliability", "Last Scanned"])
     for s in report["sources"]:
-        writer.writerow([s["name"], s["kind"], s["reliability"], s.get("last_scanned_at", "")])
+        writer.writerow([s["name"], s["kind"], s["trust_level"], s.get("last_scanned_at", "")])
 
     return buf.getvalue()
 
@@ -571,7 +571,7 @@ def export_pdf(report: dict[str, Any]) -> bytes:
     # Title page
     pdf.add_page()
     pdf.set_font('Helvetica', 'B', 20)
-    pdf.cell(0, 12, 'MAVERICKS PROJECT Investigation Report', new_x='LMARGIN', new_y='NEXT', align='C')
+    pdf.cell(0, 12, 'TRILOK TRACE Investigation Report', new_x='LMARGIN', new_y='NEXT', align='C')
     pdf.ln(5)
     pdf.set_font('Helvetica', '', 12)
     inv = report['investigation']
@@ -678,7 +678,7 @@ def export_pdf(report: dict[str, Any]) -> bytes:
     pdf.cell(0, 10, 'Sources', new_x='LMARGIN', new_y='NEXT')
     pdf.set_font('Helvetica', '', 10)
     for s in report['sources']:
-        pdf.multi_cell(0, 6, f"- {s['name']} ({s['kind']}): reliability={s['reliability']}", new_x='LMARGIN')
+        pdf.multi_cell(0, 6, f"- {s['name']} ({s['kind']}): trust_level={s['trust_level']}", new_x='LMARGIN')
 
     # Audit trail
     pdf.add_page()

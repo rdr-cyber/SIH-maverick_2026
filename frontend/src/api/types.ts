@@ -5,7 +5,7 @@ export interface Source {
   name: string;
   kind: string;
   access_method: string;
-  reliability: number;
+  trust_level: number;
   last_scanned_at: string | null;
 }
 
@@ -294,7 +294,7 @@ export interface MonitoringSource {
   id: string;
   name: string;
   kind: string;
-  reliability: number;
+  trust_level: number;
   enabled: boolean;
   last_scanned_at: string | null;
   actors: number;

@@ -21,7 +21,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, IDMixin, StampMixin
+from .base import Base, CITEXT, GUID, IDMixin, JSONBVariant, StampMixin
 
 # Controlled vocabularies
 ANALYST_ROLES = ("analyst", "senior_analyst", "admin")
@@ -33,9 +33,10 @@ class Analyst(Base, IDMixin, StampMixin):
 
     __tablename__ = "analysts"
 
-    username: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
-    email: Mapped[str] = mapped_column(String(160), unique=True, nullable=False)
+    # CITEXT per DATABASE.md §1 (case-insensitive unique emails).
+    email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="analyst")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -59,8 +60,9 @@ class Investigation(Base, IDMixin, StampMixin):
     lead_analyst_id: Mapped[str] = mapped_column(
         ForeignKey("analysts.id", ondelete="RESTRICT"), nullable=False
     )
+    # UUID[] in the DDL; JSON array keeps SQLite parity (flagged drift).
     participants: Mapped[dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=list
+        JSONBVariant, nullable=False, default=list
     )
     targets: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=list)
     parameters: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
@@ -84,11 +86,11 @@ class AuditEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    analyst_id: Mapped[Optional[str]] = mapped_column(String(36))
+    analyst_id: Mapped[Optional[str]] = mapped_column(GUID())
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     action: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_type: Mapped[Optional[str]] = mapped_column(String(40))
-    resource_id: Mapped[Optional[str]] = mapped_column(String(36))
+    resource_id: Mapped[Optional[str]] = mapped_column(GUID())
 
     before_json: Mapped[Optional[dict[str, Any]]] = mapped_column("before", JSON)
     after_json: Mapped[Optional[dict[str, Any]]] = mapped_column("after", JSON)

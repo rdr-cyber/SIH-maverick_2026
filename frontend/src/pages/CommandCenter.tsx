@@ -50,7 +50,7 @@ export default function CommandCenter() {
             <svg className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <h1 className="text-sm font-bold tracking-wide text-slate-200">MAVERICKS PROJECT</h1>
+            <h1 className="text-sm font-bold tracking-wide text-slate-200">TRILOK TRACE</h1>
           </div>
           <p className="text-xs text-slate-600">Investigative Intelligence Platform</p>
         </div>

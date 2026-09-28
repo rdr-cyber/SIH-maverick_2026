@@ -4,8 +4,7 @@ Reports system status derived from the database — NOT live autonomous
 collection.  Do not claim live scanning unless actually implemented.
 
 Provides:
-- System overview (entity counts, task backend status)
-- Source scan status (last_scanned_at, reliability)
+- System overview (entity counts, task backend status)  - Source scan status (last_scanned_at, trust_level)
 - Relationship breakdown (by status, by band)
 - Timeline event summary
 - Recent errors from audit log
@@ -77,7 +76,7 @@ def overview(session: DbSession) -> dict:
 
 @router.get("/sources", summary="Source scan status")
 def source_status(session: DbSession) -> list[dict]:
-    """Each source's last scan time, reliability, and artifact count."""
+    """Each source's last scan time, trust level, and artifact count."""
     sources = list(session.execute(select(Source).order_by(Source.name)).scalars().all())
     results = []
     for src in sources:
@@ -94,7 +93,7 @@ def source_status(session: DbSession) -> list[dict]:
             "id": src.id,
             "name": src.name,
             "kind": src.kind,
-            "reliability": src.reliability,
+            "trust_level": src.trust_level,
             "enabled": src.enabled,
             "last_scanned_at": src.last_scanned_at.isoformat() if src.last_scanned_at else None,
             "actors": actor_count,

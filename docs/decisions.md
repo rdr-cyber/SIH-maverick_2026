@@ -1,4 +1,4 @@
-# Architecture Decision Records (SHADOWGRAPH)
+# Architecture Decision Records (TRILOK TRACE)
 
 Status: **Accepted** unless noted. New ADRs appended as phases progress.
 

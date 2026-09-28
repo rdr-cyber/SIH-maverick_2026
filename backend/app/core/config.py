@@ -1,11 +1,11 @@
 """Application configuration and infrastructure-adapter selection.
 
-MAVERICKS PROJECT is ONE application with interchangeable infrastructure adapters.
+TRILOK TRACE is ONE application with interchangeable infrastructure adapters.
 `APP_MODE` selects a coherent bundle of defaults; each backend can still be
 overridden individually.
 
     APP_MODE=local (default -- no external services required)
-        DATABASE_URL  -> sqlite:///<backend>/data/shadowgraph.db
+        DATABASE_URL  -> sqlite:///<backend>/data/trilok_trace.db
         GRAPH_BACKEND -> inprocess
         TASK_BACKEND  -> local
 
@@ -29,7 +29,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-DEFAULT_SQLITE_PATH = BACKEND_DIR / "data" / "shadowgraph.db"
+DEFAULT_SQLITE_PATH = BACKEND_DIR / "data" / "trilok_trace.db"
 
 AppMode = Literal["local", "production"]
 GraphBackend = Literal["inprocess", "neo4j"]
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     )
 
     # ---- identity ----------------------------------------------------------
-    app_name: str = "MAVERICKS PROJECT"
+    app_name: str = "TRILOK TRACE"
     app_version: str = "0.1.0"
     api_prefix: str = "/api/v1"
 
@@ -103,6 +103,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://127.0.0.1:5174,http://127.0.0.1:5175,http://127.0.0.1:5176"
     default_page_size: int = 25
     max_page_size: int = 200
+    rate_limit_per_minute: int = 120
 
     correlation_weights: dict[str, int] = Field(
         default_factory=lambda: dict(DEFAULT_CORRELATION_WEIGHTS)
@@ -122,7 +123,7 @@ class Settings(BaseSettings):
             if production:
                 raise ValueError(
                     "APP_MODE=production requires DATABASE_URL "
-                    "(e.g. postgresql+psycopg://user:pass@host:5432/shadowgraph)"
+                    "(e.g. postgresql+psycopg://user:pass@host:5432/trilok_trace)"
                 )
             DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
             self.database_url = f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}"

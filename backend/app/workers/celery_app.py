@@ -28,7 +28,7 @@ except Exception:
     broker_url = "redis://localhost:6379/0"
 
 celery_app = Celery(
-    "shadowgraph",
+    "trilok_trace",
     broker=broker_url,
     backend=broker_url,
 )

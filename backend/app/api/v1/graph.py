@@ -63,10 +63,10 @@ def get_edge_evidence(
     session: DbSession,
     source: str = Query(description="Source node ID (LABEL:pgkey)"),
     target: str = Query(description="Target node ID (LABEL:pgkey)"),
-) -> list[dict]:
-    """Return evidence items supporting a specific relationship edge.
-
-    This powers the 'WHY' panel when clicking an edge in the graph.
+) -> dict:
+    """Return the full WHY payload for an edge: relationship inference metadata
+    (band, status, scoring factors, explanation) plus its evidence chain —
+    GRAPH_MODEL.md §3 / API.md §6.
     """
     repo = GraphRepository(session)
     return repo.get_edge_evidence(source, target)

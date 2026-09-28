@@ -7,6 +7,7 @@ import ActorSearch from "@/pages/ActorSearch";
 import ActorProfile from "@/pages/ActorProfile";
 import Evidence from "@/pages/Evidence";
 import Graph from "@/pages/Graph";
+import Map from "@/pages/Map";
 import Timeline from "@/pages/Timeline";
 import Infrastructure from "@/pages/Infrastructure";
 import Monitoring from "@/pages/Monitoring";
@@ -62,7 +63,7 @@ export default function App() {
 
   // Update document title
   useEffect(() => {
-    document.title = token ? "MAVERICKS PROJECT" : "MAVERICKS PROJECT — Sign In";
+    document.title = token ? "TRILOK TRACE" : "TRILOK TRACE — Sign In";
   }, [token]);
 
   // Not authenticated — show login
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="actors/:ref" element={<ActorProfile />} />
           <Route path="evidence" element={<Evidence />} />
           <Route path="graph" element={<Graph />} />
+          <Route path="map" element={<Map />} />
           <Route path="timeline" element={<Timeline />} />
           <Route path="infrastructure" element={<Infrastructure />} />
           <Route path="monitoring" element={<Monitoring />} />

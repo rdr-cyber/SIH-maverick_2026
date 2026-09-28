@@ -100,7 +100,7 @@ class InfrastructureRepository:
                 "actor_code": actor_cache[i.actor_id],
                 "source_name": i.source.name if i.source else None,
                 "source_kind": i.source.kind if i.source else None,
-                "source_reliability": i.source.reliability if i.source else None,
+                "source_reliability": i.source.trust_level if i.source else None,
             })
 
         return results, int(total)
@@ -168,7 +168,7 @@ class InfrastructureRepository:
                     "first_seen": i.first_seen.isoformat() if i.first_seen else None,
                     "last_seen": i.last_seen.isoformat() if i.last_seen else None,
                     "source_name": i.source.name if i.source else None,
-                    "source_reliability": i.source.reliability if i.source else None,
+                    "source_reliability": i.source.trust_level if i.source else None,
                 }
                 for i in items
             ],

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchActors } from "@/api/client";
+import { authHeaders } from "@/api/auth";
 
 const BASE = "/api/v1";
 
@@ -79,7 +80,7 @@ export default function Timeline() {
       if (actorFilter) qs.set("actor", actorFilter);
       if (kindFilter) qs.set("kind", kindFilter);
       qs.set("limit", "100");
-      const res = await fetch(`${BASE}/timeline?${qs}`);
+      const res = await fetch(`${BASE}/timeline?${qs}`, { headers: authHeaders() });
       if (!res.ok) throw new Error(`Timeline fetch failed: ${res.status}`);
       const data: TimelineResponse = await res.json();
       setEvents(data.items);

@@ -55,7 +55,7 @@ def section(title: str) -> None:
 # ============================================================================
 # Setup
 # ============================================================================
-print("\n  SHADOWGRAPH — Attribution Test Suite")
+print("\n  TRILOK TRACE — Attribution Test Suite")
 print("  " + "=" * 50)
 
 init_db()

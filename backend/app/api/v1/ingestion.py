@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_role
 from app.api.deps import DbSession
 from app.data_generation.fixtures import (
     ALL_FIXTURES,
@@ -19,7 +19,7 @@ from app.data_generation.fixtures import (
     LAUNDERPIPE_FIXTURES,
     PHARMAKON_FIXTURES,
 )
-from app.models.identity import Source
+from app.models.identity import Identifier, Source
 from app.models.intel import Relationship
 from app.services.ingestion import (
     IngestionResult,
@@ -38,7 +38,8 @@ router = APIRouter(
 _recent_results: list[dict] = []
 
 
-@router.post("/scan", summary="Run synthetic ingestion scan")
+@router.post("/scan", summary="Run synthetic ingestion scan",
+             dependencies=[Depends(require_role("admin", "senior_analyst"))])
 def run_scan(
     session: DbSession,
     scenario: str = Query(
@@ -116,7 +117,7 @@ def provenance(
     Shows the provenance chain:
     Source → Observation → Extracted Entity → Resolved Actor → Relationship
     """
-    from app.models.identity import Actor, Identifier
+    from app.models.identity import Actor
 
     # Find relationships created by ingestion
     stmt = (
@@ -173,7 +174,7 @@ def ingestion_sources(
             "id": src.id,
             "name": src.name,
             "kind": src.kind,
-            "reliability": src.reliability,
+            "trust_level": src.trust_level,
             "enabled": src.enabled,
             "last_scanned_at": src.last_scanned_at.isoformat() if src.last_scanned_at else None,
             "identifiers": actor_count,

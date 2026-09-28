@@ -1,4 +1,4 @@
-"""Comprehensive test suite for all SHADOWGRAPH endpoints.
+"""Comprehensive test suite for all TRILOK TRACE endpoints.
 
 Covers: health, actors, evidence, timeline, infrastructure, graph,
 correlation, confidence, investigations, monitoring, reports.
@@ -44,7 +44,7 @@ client = TestClient(app, raise_server_exceptions=False)
 client.__enter__()
 
 # Authenticate as admin for all tests
-_login = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+_login = client.post("/api/v1/auth/login", json={"username": "ami", "password": "ami43210"})
 assert _login.status_code == 200, f"Login failed: {_login.text}"
 AUTH = {"Authorization": f"Bearer {_login.json()['access_token']}"}
 
@@ -278,28 +278,28 @@ check("INV-001 has relationships", len(inv.get("relationships", [])) > 0)
 r = _post("/api/v1/investigations", json={
     "title": "Test Inv",
     "description": "Testing",
-    "lead_analyst": "jmartinez",
+    "lead_analyst": "amra",
     "targets": ["pharmakon"],
 })
 check("create investigation 201", r.status_code == 201)
 new_code = r.json()["code"]
 
 # Activate
-r = _post(f"/api/v1/investigations/{new_code}/activate?analyst=jmartinez")
+r = _post(f"/api/v1/investigations/{new_code}/activate?analyst=amra")
 check("activate", r.json()["status"] == "active")
 
 # Add note
 r = _post(f"/api/v1/investigations/{new_code}/notes", json={
-    "analyst": "jmartinez", "note": "Test note."
+    "analyst": "amra", "note": "Test note."
 })
 check("add note", r.json()["ok"] is True)
 
 # Pause
-r = _post(f"/api/v1/investigations/{new_code}/pause?analyst=jmartinez")
+r = _post(f"/api/v1/investigations/{new_code}/pause?analyst=amra")
 check("pause", r.json()["status"] == "paused")
 
 # Close
-r = _post(f"/api/v1/investigations/{new_code}/close?analyst=jmartinez")
+r = _post(f"/api/v1/investigations/{new_code}/close?analyst=amra")
 check("close", r.json()["status"] == "closed")
 
 # Invalid analyst
@@ -317,7 +317,7 @@ with engine.connect() as conn:
 r = _post("/api/v1/investigations/decide", json={
     "relationship_id": rel_id,
     "decision": "accepted",
-    "analyst": "jmartinez",
+    "analyst": "amra",
     "review_note": "Test decision.",
 })
 check("decide accepted", r.json()["decision"] == "accepted")
@@ -408,7 +408,7 @@ r = _get("/api/v1/actors?limit=1")
 check("X-Content-Type-Options", r.headers.get("x-content-type-options") == "nosniff")
 check("X-Frame-Options", r.headers.get("x-frame-options") == "DENY")
 check("X-XSS-Protection", r.headers.get("x-xss-protection") == "1; mode=block")
-check("Referrer-Policy", r.headers.get("referrer-policy") == "strict-origin-when-cross-origin")
+check("Referrer-Policy", r.headers.get("referrer-policy") == "no-referrer")
 
 # =====================================================================
 # SUMMARY

@@ -134,15 +134,15 @@ export default function Monitoring() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-500">Reliability</span>
+                  <span className="text-[10px] text-slate-500">Trust level</span>
                   <div className="h-2 flex-1 rounded-full bg-slate-800">
                     <div
                       className="h-full rounded-full bg-teal-600"
-                      style={{ width: `${src.reliability}%` }}
+                      style={{ width: `${src.trust_level}%` }}
                     />
                   </div>
-                  <span className={`font-mono text-xs ${RELIABILITY_COLOR(src.reliability)}`}>
-                    {src.reliability}
+                  <span className={`font-mono text-xs ${RELIABILITY_COLOR(src.trust_level)}`}>
+                    {src.trust_level}
                   </span>
                 </div>
               </div>

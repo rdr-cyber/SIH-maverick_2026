@@ -1,11 +1,12 @@
 /**
- * MAVERICKS PROJECT API client.
+ * TRILOK TRACE API client.
  *
  * All data comes from the real backend.  No mock data, no fake success states.
  * If the backend is unreachable the caller receives an error — the UI renders
  * an error state, not a placeholder.
  */
 
+import { authFetch } from "./auth";
 import type {
   ActorDetail,
   ActorStats,
@@ -29,16 +30,13 @@ import type {
 const BASE = "/api/v1";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const { authHeaders } = await import("./auth");
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    ...init,
-  });
+  // authFetch silently rotates an expired access token via /auth/refresh and
+  // retries once, so 401 here means the refresh path also failed — session over.
+  const res = await authFetch(path, init);
   if (res.status === 401) {
-    // Token expired or invalid — clear and reload
-    const { removeToken } = await import("./auth");
-    removeToken();
-    window.location.reload();
+    // Token expired or invalid — clear and return to Sign In
+    const { sessionExpired } = await import("./auth");
+    sessionExpired();
     throw new ApiError(401, "Session expired");
   }
   if (!res.ok) {

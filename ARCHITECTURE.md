@@ -272,7 +272,7 @@ Backend module tree (planned):
 | frontend (vite dev / nginx prod) | 5173 / 80 | UI, proxies /api → backend |
 
 `docker-compose.yml` defines `dev` and `demo` profiles with healthchecks, volume mounts,
-and an isolated `shadowgraph-net` network.
+and an isolated `trilok-trace-net` network.
 
 ---
 

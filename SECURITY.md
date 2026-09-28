@@ -1,16 +1,18 @@
-# SECURITY — Design (Phase 1)
+# SECURITY — TRILOK TRACE
 
-SHADOWGRAPH is a defensive prototype; its own security posture matters as much as the
+TRILOK TRACE is a defensive prototype; its own security posture matters as much as the
 intelligence domain rules. No credentials live in source code — everything comes from
 environment variables (see `.env.example`).
 
 ## 1. Authentication
 
-- **JWT access tokens** (HS256, 15 min) + **rotatable refresh tokens** (7 d, stored server-side,
-  revocable). `python-jose`/`PyJWT` with strict claim validation.
-- Passwords: **Argon2id** (hash, salt, memory-hard) via `argon2-cffi`. Bootstrap demo accounts
-  get hashed secrets from env at startup; `must_change_password` flag for demo accounts.
-- Login/refresh/logout events written to `audit_events` (`auth.*`).
+- **JWT access tokens** (HS256, configurable expiry, default 30 min) via `PyJWT` with strict claim
+  validation (issuer check: `trilok-trace`). No refresh tokens — session expires and user must
+  re-authenticate.
+- Passwords: **PBKDF2-SHA256** (260,000 iterations, 16-byte salt) using the Python stdlib
+  `hashlib` module. No external password-hashing dependency required. Bootstrap demo accounts
+  get hashed secrets at seed time; `must_change_password` flag available.
+- Login events written to `audit_events` (`auth.*`).
 
 ## 2. Authorization (RBAC)
 
@@ -32,8 +34,10 @@ Enforced server-side via FastAPI dependency (`require_role`). UI hides unauthori
   **parameter dictionary** (no f-string interpolation into queries, ever).
 - Files (reports uploads) restricted by extension/type/size; downloads served via
   authenticated endpoint with `Content-Disposition`.
-- Rate limiting: Redis sliding-window per `(ip, route bucket)` and per-user; 120 req/min
-  default (configurable). 429 with `Retry-After`.
+- Rate limiting: in-memory per-IP sliding window (120 requests/minute, configurable via
+  `RATE_LIMIT_PER_MINUTE`). Returns HTTP 429 with error detail when exceeded. Suitable for
+  single-process local mode; production multi-worker deployments should use Redis-backed
+  rate limiting.
 
 ## 4. Secure headers & transport
 
@@ -46,8 +50,9 @@ Enforced server-side via FastAPI dependency (`require_role`). UI hides unauthori
 
 - `.env` gitignored (`.gitignore` present); `docker-compose` reads `${VAR:?}` so missing
   secrets fail fast.
-- Different `SECRET_KEY`/DB/Neo4j passwords per environment; rotation documented.
-- No secrets in logs: `filter_secrets` logging filter redacts password/token fields.
+- In local mode, `SECRET_KEY` is auto-generated per process (ephemeral, tokens don't survive
+  restarts). Production requires explicit `SECRET_KEY` environment variable.
+- No secrets in logs by default; password/token fields are never logged.
 
 ## 6. Audit logging
 
@@ -62,7 +67,7 @@ Enforced server-side via FastAPI dependency (`require_role`). UI hides unauthori
   (safe-error middleware).
 - Data-access checks: analysts only see intelligence their role permits; investigation
   participants list enforced for private notes.
-- All demo accounts are non-privileged by default (`demo_analyst` = analyst role).
+- Demo accounts: `ami` (admin), `amra` (senior_analyst), `tumi` (analyst).
 
 ## 8. Container hardening
 
@@ -76,17 +81,18 @@ Enforced server-side via FastAPI dependency (`require_role`). UI hides unauthori
 | Threat | Mitigation |
 |--------|-----------|
 | Unauthorized API access | JWT + RBAC dependency on every protected route |
-| Credential theft | Argon2id, refresh rotation, rate limit, audit |
+| Credential theft | PBKDF2-SHA256, rate limit, audit |
 | Injection (SQL/Cypher/NoSQL) | Parameterized queries everywhere |
 | Data exfiltration via reports | RBAC read, download authN, storage_key validation |
 | Secret exposure | .env-gitignore, fail-fast env, no secrets in logs |
 | Compromised worker | workers hold no admin powers; tasks validate inputs |
 | Insider misuse of correlation | relationship review requires senior analyst; audit trail; no real data in demo |
 
-## 10. Verification in Phase 13
+## 10. Verification
 
-Security test suite: login/refresh/logout flows, RBAC matrix (every route × role),
-parameterized-query tests for all repositories, rate-limit 429 behavior, secure-header
-presence, audit event creation per critical action, safe-error shape (no stack traces),
-`.env` absence in container image, non-root user check, and dependency vulnerability scan
-(pip-audit + npm audit) in CI.
+Security properties verified: login flow, RBAC matrix (role × endpoint), parameterized
+SQLAlchemy queries (no raw SQL), rate limiting (429 on excess), security headers
+(X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, HSTS in
+production), audit event creation on critical actions, safe error responses (no stack
+traces in production mode), `.env` gitignored, non-root Docker user, and dependency
+vulnerability scanning (pip-audit + npm audit).
